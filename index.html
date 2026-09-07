@@ -50,7 +50,6 @@
     button, input, textarea { font:inherit; }
     :focus-visible{ outline: 3px solid var(--ring); outline-offset: 2px; border-radius: 10px; }
 
-    /* Resaltado de coincidencias (nuevo, integrado a la paleta original) */
     mark{
       background: rgba(110,231,255,.22);
       color: #BDEFFF;
@@ -483,8 +482,7 @@
       'use strict';
 
       /* ==============================================================
-         1) BASE DE DATOS DE PROTOCOLOS
-         Para agregar un protocolo, sumá un objeto más a este array.
+         1) BASE DE DATOS DE PROTOCOLOS Y ARCHIVOS
          ============================================================== */
       const protocols = [
         {
@@ -550,6 +548,36 @@
             "Registra: qué pasó, tiempos aproximados, reactivos/equipos involucrados y medidas tomadas."
           ],
           content: "Ante dudas: prioriza evacuación/seguridad y comunicación. Se recomienda seguir cartelería del establecimiento."
+        },
+        {
+          id: "PDF_U4",
+          title: "Unidad 4 - Formulación y Nomenclatura",
+          category: "Reactivos",
+          urgency: "Informativo",
+          urgencyLevel: "info",
+          tags: ["nomenclatura", "formulas", "quimica", "reactivos", "unidad 4", "pdf"],
+          summary: "Documento oficial de química en PDF sobre compuestos binarios, ternarios y estequiometría.",
+          steps: [
+            "Abrir el documento completo para verificar la normativa IUPAC.",
+            "Consultar las tablas de números de oxidación y compuestos adjuntos."
+          ],
+          content: "Documento en PDF sobre formulación y nomenclatura química para el laboratorio escolar.",
+          fileRef: "Unidad 4 - Formulacion y nomenclatura.pdf"
+        },
+        {
+          id: "PROTO_01",
+          title: "Protocolo General del Laboratorio Técnico",
+          category: "Seguridad",
+          urgency: "Alta",
+          urgencyLevel: "warn",
+          tags: ["protocolo", "seguridad", "normas", "taller", "laboratorio"],
+          summary: "Normas generales de uso, convivencia y seguridad dentro del laboratorio escolar técnico.",
+          steps: [
+            "Revisar las pautas obligatorias antes de iniciar cualquier práctica.",
+            "Verificar el uso correcto de los elementos de protección personal (EPP)."
+          ],
+          content: "Normas generales del establecimiento para mantener la seguridad y el orden en las prácticas técnicas.",
+          fileRef: "protocolo"
         }
       ];
 
@@ -557,29 +585,20 @@
       const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
       /* ==============================================================
-         2) UTILIDADES (motor nuevo)
+         2) UTILIDADES
          ============================================================== */
-
-      // Normaliza: minúsculas + sin tildes. "Eléctrica" -> "electrica"
       const normalizar = (s) =>
         (s ?? "").toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-      // Escapa HTML para prevenir inyección desde los datos
       const escaparHTML = (str) =>
         String(str).replace(/[&<>"']/g, (c) =>
           ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-      // Debounce liviano: evita re-render en cada tecla (netbooks)
       const debounce = (fn, ms = 120) => {
         let t;
         return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
       };
 
-      /* --------------------------------------------------------------
-         Pre-indexado: UNA sola vez al cargar. Cada protocolo obtiene
-         `_indice` con todo su texto normalizado. El filtrado luego es
-         O(n) sobre strings ya procesados → ultra rápido.
-         -------------------------------------------------------------- */
       protocols.forEach(p => {
         p._indice = normalizar([
           p.title, p.category, p.tags.join(" "),
@@ -598,7 +617,7 @@
       const chips = $$(".chip[data-filter]");
 
       let activeCategory = "__all__";
-      let sortMode = "relevance"; // 'relevance' | 'urgency'
+      let sortMode = "relevance";
 
       function urgencyRank(u){
         switch(u){
@@ -619,7 +638,7 @@
       }
 
       /* ==============================================================
-         4) RELEVANCIA (ponderación por campo, sobre texto normalizado)
+         4) RELEVANCIA
          ============================================================== */
       function computeRelevance(p, tokens, nQuery){
         if(tokens.length === 0) return 1;
@@ -640,7 +659,6 @@
           if(steps.includes(t)) score += 2;
           if(content.includes(t)) score += 1;
         }
-        // Bonus por coincidencia de frase completa
         if(title.includes(nQuery)) score += 5;
         if(tags.includes(nQuery)) score += 3;
         if(p._indice.includes(nQuery)) score += 2;
@@ -649,11 +667,20 @@
       }
 
       /* ==============================================================
-         5) RENDERIZADO (una sola inyección al DOM + delegación)
+         5) RENDERIZADO (Con soporte para abrir archivos físicos)
          ============================================================== */
       function cardHTML(p){
         const u = urgencyColor(p.urgencyLevel);
         const previewSteps = (p.steps || []).slice(0, 3);
+        
+        const actionButton = p.fileRef 
+          ? `<a class="btn primary" href="${escaparHTML(p.fileRef)}" target="_blank" rel="noopener">
+               <span aria-hidden="true">📄</span> Abrir documento
+             </a>`
+          : `<button class="btn primary" type="button" data-open="${escaparHTML(p.id)}">
+               <span aria-hidden="true">🔍</span> Leer / editar
+             </button>`;
+
         return `
           <article class="card" data-id="${escaparHTML(p.id)}">
             <div class="cardTop">
@@ -687,9 +714,7 @@
 
             <div class="cardActions">
               <div class="actionsLeft">
-                <button class="btn primary" type="button" data-open="${escaparHTML(p.id)}">
-                  <span aria-hidden="true">🔍</span> Leer / editar
-                </button>
+                ${actionButton}
                 <button class="btn" type="button" data-copy="${escaparHTML(p.id)}" title="Copiar ID de protocolo">
                   <span aria-hidden="true">📋</span> Copiar ID
                 </button>
@@ -718,11 +743,9 @@
             </div>`;
           return;
         }
-        // Todo el HTML se construye en un string y se inyecta UNA vez
         grid.innerHTML = list.map(cardHTML).join("");
       }
 
-      // Delegación de eventos: un solo listener para todas las tarjetas
       grid.addEventListener("click", async (e) => {
         const openBtn = e.target.closest("[data-open]");
         if(openBtn){ openModal(openBtn.getAttribute("data-open")); return; }
@@ -749,7 +772,7 @@
       });
 
       /* ==============================================================
-         6) MODAL (lectura + reporte, persistencia en localStorage)
+         6) MODAL
          ============================================================== */
       const modalOverlay = $("#modalOverlay");
       const closeModal = $("#closeModal");
@@ -778,7 +801,7 @@
           const data = JSON.parse(localStorage.getItem(REPORT_KEY) || "{}");
           data[id] = text;
           localStorage.setItem(REPORT_KEY, JSON.stringify(data));
-        }catch(_){ /* localStorage deshabilitado: no rompe la UI */ }
+        }catch(_){}
       }
 
       function openModal(id){
@@ -842,9 +865,7 @@
       });
 
       /* ==============================================================
-         7) MOTOR DE BÚSQUEDA + FILTROS
-         Multi-palabra con lógica AND sobre el índice pre-calculado:
-         "quimico derrame" exige que TODOS los términos aparezcan.
+         7) MOTOR DE BÚSQUEDA
          ============================================================== */
       function syncChips(){
         for(const chip of chips){
@@ -864,7 +885,6 @@
               || p.tags.includes(normalizar(activeCategory));
             if(!categoryOk) return false;
             if(tokens.length === 0) return true;
-            // AND: todos los términos deben estar en el índice pre-calculado
             return tokens.every(t => p._indice.includes(t));
           })
           .map(p => ({ p, score: computeRelevance(p, tokens, nQuery) }));
@@ -898,7 +918,6 @@
         });
       }
 
-      // Debounce: no re-renderiza en cada tecla
       q.addEventListener("input", debounce(applyFilters, 120));
 
       toggleUrgency.addEventListener("click", () => {
@@ -907,23 +926,26 @@
         applyFilters();
       });
 
-      // Atajo: "/" enfoca la búsqueda
       document.addEventListener("keydown", (e) => {
         if(["INPUT","TEXTAREA"].includes(document.activeElement?.tagName)) return;
         if(e.key === "/"){ e.preventDefault(); q.focus(); }
       });
 
       /* ==============================================================
-         8) ACCIONES FLOTANTES + TOAST
+         8) FLOTANTES Y TOAST
          ============================================================== */
       $("#jumpToFirst").addEventListener("click", () => {
-        const firstBtn = grid.querySelector("button[data-open]");
-        if(firstBtn) openModal(firstBtn.getAttribute("data-open"));
-        else toast("⚠️ No hay resultados para abrir.");
+        const firstBtn = grid.querySelector("button[data-open], a[data-open], a.btn.primary");
+        if(firstBtn) {
+          if(firstBtn.tagName === 'A') firstBtn.click();
+          else openModal(firstBtn.getAttribute("data-open"));
+        } else {
+          toast("⚠️ No hay resultados para abrir.");
+        }
       });
 
       $("#openHelpModal").addEventListener("click", () => {
-        toast("💡 Tip: busca por palabras (ej. “derrame”), usa chips por categoría y abre “Leer / editar” para reportar (demo).");
+        toast("💡 Tip: busca por palabras (ej. “derrame”), usa chips por categoría y abre los documentos PDF o protocolos directamente.");
       });
 
       const toastEl = document.createElement("div");
@@ -950,34 +972,9 @@
         toastT = setTimeout(() => { toastEl.style.display = "none"; }, 2400);
       }
 
-      /* ==============================================================
-         9) ARRANQUE
-         ============================================================== */
       syncChips();
       applyFilters();
     })();
-  </script>
-
-  <script>
-    // ============================================================
-    // (Opcional) Listado de archivos del repositorio vía API GitHub
-    // Reemplaza con tu usuario y nombre de repositorio
-    // ============================================================
-    const REPO_OWNER = "miqueas80";
-    const REPO_NAME = "laboratorio-escolar-tecnico";
-
-    async function cargarArchivosDesdeGitHub() {
-      try {
-        const response = await fetch(`[api.github.com](https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/)`);
-        const items = await response.json();
-        const archivos = items.filter(item => item.type === "file" && item.name !== "index.html" && item.name !== "datos.js");
-        console.log("Archivos encontrados en el repositorio:", archivos);
-      } catch (error) {
-        console.error("Error al cargar los archivos:", error);
-      }
-    }
-
-    document.addEventListener("DOMContentLoaded", cargarArchivosDesdeGitHub);
   </script>
  </body>
 </html>
