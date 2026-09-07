@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Command Center de Protocolos | Laboratorio Técnico</title>
+  <meta name="description" content="Centro de comando de protocolos y manuales del laboratorio de la escuela técnica.">
+
+  <!-- ============================================================
+       TAILWIND CSS vía CDN (única dependencia externa, liviana).
+       Se configura el tema oscuro y colores de acento del lab.
+       ============================================================ -->
+  <script src="[cdn.tailwindcss.com](https://cdn.tailwindcss.com)"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            base:    '#0b1120', // Fondo principal
+            panel:   '#111a2e', // Paneles / tarjetas
+            border:  '#1e2a45', // Bordes sutiles
+            accent:  '#22d3ee', // Cian de acento (command center)
+          },
+          boxShadow: {
+            card: '0 4px 20px rgba(0,0,0,.35)',
+            glow: '0 0 0 1px rgba(34,211,238,.35), 0 4px 24px rgba(34,211,238,.12)',
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Micro-estilos que Tailwind CDN no cubre (scrollbar, animación de entrada) -->
+  <style>
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #0b1120; }
+    ::-webkit-scrollbar-thumb { background: #1e2a45; border-radius: 4px; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .card-enter { animation: fadeUp .25s ease-out both; }
+
+    /* Resaltado de coincidencias de búsqueda */
+    mark {
+      background: rgba(34, 211, 238, .25);
+      color: #a5f3fc;
+      border-radius: 3px;
+      padding: 0 2px;
+    }
+  </style>
+</head>
+
+<body class="bg-base text-slate-200 min-h-screen antialiased">
+
+  <!-- ============================================================
+       ENCABEZADO
+       ============================================================ -->
+  <header class="border-b border-border bg-panel/70 backdrop-blur sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex flex-col sm:flex-row sm:items-center gap-4">
+      <div class="flex items-center gap-3 shrink-0">
+        <!-- Logo simple en SVG inline (sin peticiones extra) -->
+        <svg class="w-9 h-9 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M12 2 3 7v10l9 5 9-5V7l-9-5z"/><path d="M12 22V12"/><path d="M3 7l9 5 9-5"/>
+        </svg>
+        <div>
+          <h1 class="text-lg font-bold tracking-wide text-white leading-tight">Command Center de Protocolos</h1>
+          <p class="text-xs text-slate-400">Laboratorio — Escuela Técnica</p>
+        </div>
+      </div>
+
+      <!-- Buscador principal -->
+      <div class="relative flex-1">
+        <svg class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"
+             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>
+        </svg>
+        <input id="searchInput" type="search" autocomplete="off" spellcheck="false"
+               placeholder="Buscar protocolo, categoría o paso… (ej: soldadura, quimico, apagon)"
+               class="w-full bg-base border border-border rounded-xl pl-10 pr-24 py-2.5 text-sm
+                      placeholder-slate-500 focus:outline-none focus:border-accent focus:shadow-glow transition">
+        <span id="resultCount"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500"></span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============================================================
+       CONTENIDO PRINCIPAL
+       ============================================================ -->
+  <main class="max-w-6xl mx-auto px-4 py-8">
+
+    <!-- Grilla de tarjetas (se renderiza por JS) -->
+    <section id="cardsGrid" class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3" aria-live="polite"></section>
+
+    <!-- Estado vacío: sin coincidencias -->
+    <section id="emptyState" class="hidden text-center py-20">
+      <svg class="w-14 h-14 mx-auto text-slate-600 mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/><path d="M8 11h6"/>
+      </svg>
+      <h2 class="text-lg font-semibold text-slate-300 mb-1">Sin coincidencias</h2>
+      <p class="text-sm text-slate-500 mb-5">No se encontraron protocolos para <span id="emptyQuery" class="text-accent font-mono"></span>.</p>
+      <button id="clearBtn"
+              class="bg-accent/10 border border-accent/40 text-accent text-sm font-semibold
+                     px-5 py-2 rounded-lg hover:bg-accent/20 transition">
+        Limpiar filtros
+      </button>
+    </section>
+  </main>
+
+  <!-- ============================================================
+       BOTÓN FLOTANTE + MODAL DE REPORTES / SUGERENCIAS
+       ============================================================ -->
+  <button id="openReport" title="Reportar error o sugerir corrección"
+          class="fixed bottom-5 right-5 z-40 bg-accent text-base font-bold text-sm px-4 py-3
+                 rounded-full shadow-glow hover:scale-105 transition flex items-center gap-2">
+    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.4 8.7 8.7 0 0 1-3.8-.9L3 21l2-5.4a8.3 8.3 0 0 1-1-4A8.4 8.4 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5z"/>
+    </svg>
+    Reportar
+  </button>
+
+  <!-- Overlay del modal -->
+  <div id="reportModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div id="modalBackdrop" class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+
+    <div class="relative bg-panel border border-border rounded-2xl shadow-card w-full max-w-md p-6 card-enter">
+      <button id="closeReport" aria-label="Cerrar"
+              class="absolute top-3 right-3 text-slate-500 hover:text-white text-xl leading-none px-2">&times;</button>
+
+      <h2 class="text-lg font-bold text-white mb-1">Reporte / Sugerencia</h2>
+      <p class="text-xs text-slate-400 mb-4">¿Encontraste un error en un protocolo o querés proponer una mejora? Completá el formulario.</p>
+
+      <form id="reportForm" class="space-y-3">
+        <div>
+          <label for="repProto" class="block text-xs font-semibold text-slate-400 mb-1">Protocolo relacionado</label>
+          <select id="repProto" required
+                  class="w-full bg-base border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent">
+            <option value="">Seleccionar…</option>
+            <!-- Opciones generadas dinámicamente desde el array de datos -->
+          </select>
+        </div>
+        <div>
+          <label for="repName" class="block text-xs font-semibold text-slate-400 mb-1">Tu nombre y curso</label>
+          <input id="repName" type="text" required maxlength="60" placeholder="Ej: Julián P. — 5°B Electrónica"
+                 class="w-full bg-base border border-border rounded-lg px-3 py-2 text-sm placeholder-slate-600 focus:outline-none focus:border-accent">
+        </div>
+        <div>
+          <label for="repMsg" class="block text-xs font-semibold text-slate-400 mb-1">Descripción del error o sugerencia</label>
+          <textarea id="repMsg" required rows="4" maxlength="500" placeholder="Describí el problema o la mejora propuesta…"
+                    class="w-full bg-base border border-border rounded-lg px-3 py-2 text-sm placeholder-slate-600 focus:outline-none focus:border-accent resize-none"></textarea>
+        </div>
+        <button type="submit"
+                class="w-full bg-accent text-base font-bold text-sm py-2.5 rounded-lg hover:brightness-110 transition">
+          Enviar reporte
+        </button>
+      </form>
+
+      <!-- Confirmación tras el envío (los reportes quedan en localStorage
+           para que el docente los revise desde la consola o una futura vista) -->
+      <div id="reportOk" class="hidden text-center py-6">
+        <div class="text-4xl mb-2">✅</div>
+        <p class="text-sm text-slate-300 font-semibold">¡Reporte registrado!</p>
+        <p class="text-xs text-slate-500 mt-1">Gracias por ayudar a mejorar los protocolos del laboratorio.</p>
+      </div>
+    </form>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       LÓGICA DE LA APLICACIÓN
+       ============================================================ -->
+  <script>
+  'use strict';
+
+  /* ==============================================================
+     1) BASE DE DATOS DE PROTOCOLOS
+     --------------------------------------------------------------
+     Para agregar un nuevo manual/PDF, basta con añadir UN objeto
+     más a este array. El campo `pdf` es la ruta RELATIVA dentro
+     del repositorio (ej: carpeta /pdfs/ en la raíz de GitHub Pages).
+
+     urgencia admitida: "critico" | "alto" | "medio" | "bajo"
+     ============================================================== */
+  const PROTOCOLOS = [
+    {
+      categoria: "Seguridad Eléctrica",
+      urgencia: "critico",
+      titulo: "Corte de energía y bloqueo de tableros (LOTO)",
+      resumen: "Procedimiento de bloqueo y etiquetado antes de intervenir circuitos o máquinas del taller.",
+      pasos: [
+        "Identificar el tablero y circuito a intervenir.",
+        "Cortar la alimentación desde la llave termomagnética.",
+        "Colocar candado y tarjeta de bloqueo (LOTO).",
+        "Verificar ausencia de tensión con multímetro.",
+        "Recién entonces iniciar la tarea."
+      ],
+      pdf: "pdfs/protocolo-loto.pdf"
+    },
+    {
+      categoria: "Primeros Auxilios",
+      urgencia: "critico",
+      titulo: "Respuesta ante electrocución",
+      resumen: "Acciones inmediatas frente a un compañero en contacto con corriente eléctrica.",
+      pasos: [
+        "NO tocar a la víctima directamente.",
+        "Cortar la energía general del sector.",
+        "Avisar al docente y llamar al 107.",
+        "Iniciar RCP solo si estás capacitado.",
+        "Registrar el incidente en el libro de laboratorio."
+      ],
+      pdf: "pdfs/protocolo-electrocucion.pdf"
+    },
+    {
+      categoria: "Química",
+      urgencia: "alto",
+      titulo: "Derrame de sustancias químicas",
+      resumen: "Contención y limpieza segura de derrames de ácidos, solventes o reactivos.",
+      pasos: [
+        "Alertar a todos y ventilar el ambiente.",
+        "Colocarse guantes y gafas de protección.",
+        "Contener el derrame con material absorbente.",
+        "Desechar residuos en el contenedor rotulado.",
+        "Informar al docente responsable."
+      ],
+      pdf: "pdfs/protocolo-derrames.pdf"
+    },
+    {
+      categoria: "Taller",
+      urgencia: "alto",
+      titulo: "Uso seguro de estación de soldadura",
+      resumen: "Manual de operación de soldadores de estaño y estaciones de aire caliente.",
+      pasos: [
+        "Verificar el estado del cable y la punta.",
+        "Trabajar sobre alfombra antiestática.",
+        "Usar extractor de humos o ventilación.",
+        "Apoyar siempre el soldador en su soporte.",
+        "Apagar y desenchufar al finalizar."
+      ],
+      pdf: "pdfs/manual-soldadura.pdf"
+    },
+    {
+      categoria: "Incendios",
+      urgencia: "critico",
+      titulo: "Evacuación y uso de extintores",
+      resumen: "Plan de evacuación del laboratorio y clasificación de extintores según tipo de fuego.",
+      pasos: [
+        "Activar la alarma y avisar al docente.",
+        "Cortar energía y gas si es seguro hacerlo.",
+        "Usar extintor ABC solo en focos incipientes.",
+        "Evacuar por la salida señalizada, sin correr.",
+        "Reunirse en el punto de encuentro del patio."
+      ],
+      pdf: "pdfs/protocolo-incendios.pdf"
+    },
+    {
+      categoria: "Informática",
+      urgencia: "medio",
+      titulo: "Mantenimiento preventivo de netbooks",
+      resumen: "Rutina mensual de limpieza física y lógica del parque de netbooks escolares.",
+      pasos: [
+        "Apagar y desconectar el equipo.",
+        "Limpiar teclado y ventilaciones con aire comprimido.",
+        "Verificar actualizaciones del sistema.",
+        "Ejecutar chequeo de disco y antivirus.",
+        "Registrar el mantenimiento en la planilla."
+      ],
+      pdf: "pdfs/manual-netbooks.pdf"
+    },
+    {
+      categoria: "Laboratorio",
+      urgencia: "bajo",
+      titulo: "Orden y devolución de instrumental",
+      resumen: "Procedimiento de préstamo, uso y devolución de instrumentos de medición.",
+      pasos: [
+        "Solicitar el instrumento al pañolero de turno.",
+        "Firmar la planilla de préstamo.",
+        "Verificar el estado antes y después del uso.",
+        "Devolver limpio y en su estuche.",
+        "Reportar cualquier daño detectado."
+      ],
+      pdf: "pdfs/protocolo-instrumental.pdf"
+    }
+    // ➕ Agregar nuevos protocolos aquí, un objeto por línea/bloque.
+  ];
+
+  /* ==============================================================
+     2) CONFIGURACIÓN VISUAL DE URGENCIAS
+     ============================================================== */
+  const URGENCIA_UI = {
+    critico: { label: "CRÍTICO", cls: "bg-red-500/15 text-red-400 border-red-500/40" },
+    alto:    { label: "ALTO",    cls: "bg-orange-500/15 text-orange-400 border-orange-500/40" },
+    medio:   { label: "MEDIO",   cls: "bg-yellow-500/15 text-yellow-300 border-yellow-500/40" },
+    bajo:    { label: "BAJO",    cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/40" }
+  };
+
+  /* ==============================================================
+     3) UTILIDADES
+     ============================================================== */
+
+  // Normaliza texto: minúsculas + sin tildes/diacríticos.
+  // "Eléctrica" -> "electrica". Base de la búsqueda tolerante.
+  const normalizar = (str) =>
+    str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+  // Escapa HTML para prevenir inyección desde los datos.
+  const escaparHTML = (str) =>
+    str.replace(/[&<>"']/g, (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  // Debounce liviano: evita re-render en cada tecla en equipos lentos.
+  const debounce = (fn, ms = 120) => {
+    let t;
+    return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+  };
+
+  /* --------------------------------------------------------------
+     Pre-indexado: se calcula UNA sola vez al cargar la página.
+     Cada protocolo obtiene un campo `_indice` con todo su texto
+     normalizado (título + resumen + categoría + pasos), lo que hace
+     el filtrado O(n) sobre strings ya procesados → ultra rápido.
+     -------------------------------------------------------------- */
+  PROTOCOLOS.forEach(p => {
+    p._indice = normalizar([p.titulo, p.resumen, p.categoria, ...p.pasos].join(" "));
+  });
+
+  /* ==============================================================
+     4) RENDERIZADO DE TARJETAS
+     ============================================================== */
+  const grid       = document.getElementById("cardsGrid");
+  const emptyState = document.getElementById("emptyState");
+  const emptyQuery = document.getElementById("emptyQuery");
+  const countEl    = document.getElementById("resultCount");
+  const input      = document.getElementById("searchInput");
+
+  function renderTarjetas(lista) {
+    // Se construye todo el HTML en un string y se inyecta UNA vez
+    // (mínimas operaciones sobre el DOM = fluidez en netbooks).
+    grid.innerHTML = lista.map((p, i) => {
+      const u = URGENCIA_UI[p.urgencia] || URGENCIA_UI.bajo;
+      return `
+      <article class="card-enter bg-panel border border-border rounded-2xl shadow-card p-5 flex flex-col
+                      hover:border-accent/50 hover:shadow-glow transition duration-200"
+               style="animation-delay:${i * 30}ms">
+        <!-- Categoría + urgencia -->
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-[11px] font-bold uppercase tracking-widest text-accent">${escaparHTML(p.categoria)}</span>
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border ${u.cls}">${u.label}</span>
+        </div>
+
+        <!-- Título y resumen -->
+        <h3 class="text-base font-bold text-white mb-1 leading-snug">${escaparHTML(p.titulo)}</h3>
+        <p class="text-xs text-slate-400 mb-4">${escaparHTML(p.resumen)}</p>
+
+        <!-- Pasos clave -->
+        <ol class="text-xs text-slate-300 space-y-1.5 mb-5 flex-1">
+          ${p.pasos.map((paso, n) => `
+            <li class="flex gap-2">
+              <span class="shrink-0 w-4 h-4 rounded-full bg-accent/15 text-accent text-[10px]
+                           font-bold flex items-center justify-center mt-px">${n + 1}</span>
+              <span>${escaparHTML(paso)}</span>
+            </li>`).join("")}
+        </ol>
+
+        <!-- Enlace al PDF del repositorio -->
+        <a href="${escaparHTML(p.pdf)}" target="_blank" rel="noopener"
+           class="mt-auto text-center bg-accent/10 border border-accent/40 text-accent text-xs
+                  font-bold py-2.5 rounded-lg hover:bg-accent/20 transition">
+          📄 Abrir protocolo completo (PDF)
+        </a>
+      </article>`;
+    }).join("");
+
+    // Estado vacío + contador de resultados
+    const hay = lista.length > 0;
+    grid.classList.toggle("hidden", !hay);
+    emptyState.classList.toggle("hidden", hay);
+    countEl.textContent = hay ? `${lista.length} de ${PROTOCOLOS.length}` : "";
+  }
+
+  /* ==============================================================
+     5) MOTOR DE BÚSQUEDA
+     --------------------------------------------------------------
+     Soporta múltiples palabras: "quimico derrame" exige que TODOS
+     los términos aparezcan en el índice del protocolo (lógica AND).
+     ============================================================== */
+  function filtrar() {
+    const q = normalizar(input.value.trim());
+    if (!q) { renderTarjetas(PROTOCOLOS); return; }
+
+    const terminos  = q.split(/\s+/);
+    const resultado = PROTOCOLOS.filter(p => terminos.every(t => p._indice.includes(t)));
+
+    emptyQuery.textContent = `"${input.value.trim()}"`;
+    renderTarjetas(resultado);
+  }
+
+  input.addEventListener("input", debounce(filtrar, 120));
+
+  document.getElementById("clearBtn").addEventListener("click", () => {
+    input.value = "";
+    filtrar();
+    input.focus();
+  });
+
+  /* ==============================================================
+     6) MODAL DE REPORTES / SUGERENCIAS
+     --------------------------------------------------------------
+     Los reportes se guardan en localStorage bajo la clave
+     "reportes_lab". El docente puede leerlos desde la consola:
+       JSON.parse(localStorage.getItem("reportes_lab"))
+     ============================================================== */
+  const modal     = document.getElementById("reportModal");
+  const form      = document.getElementById("reportForm");
+  const reportOk  = document.getElementById("reportOk");
+  const selProto  = document.getElementById("repProto");
+
+  // Poblar el selector con los títulos de los protocolos + opción general
+  PROTOCOLOS.forEach(p => {
+    const opt = document.createElement("option");
+    opt.value = opt.textContent = p.titulo;
+    selProto.appendChild(opt);
+  });
+  const optGral = document.createElement("option");
+  optGral.value = optGral.textContent = "Otro / Sugerencia general";
+  selProto.appendChild(optGral);
+
+  function abrirModal() {
+    form.classList.remove("hidden");
+    reportOk.classList.add("hidden");
+    form.reset();
+    modal.classList.remove("hidden");
+    document.body.style.overflow = "hidden";
+  }
+  function cerrarModal() {
+    modal.classList.add("hidden");
+    document.body.style.overflow = "";
+  }
+
+  document.getElementById("openReport").addEventListener("click", abrirModal);
+  document.getElementById("closeReport").addEventListener("click", cerrarModal);
+  document.getElementById("modalBackdrop").addEventListener("click", cerrarModal);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !modal.classList.contains("hidden")) cerrarModal();
+  });
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+
+    // Persistencia local del reporte (sin backend, apto GitHub Pages)
+    const reporte = {
+      protocolo: selProto.value,
+      alumno:    document.getElementById("repName").value.trim(),
+      mensaje:   document.getElementById("repMsg").value.trim(),
+      fecha:     new Date().toISOString()
+    };
+    try {
+      const clave = "reportes_lab";
+      const lista = JSON.parse(localStorage.getItem(clave) || "[]");
+      lista.push(reporte);
+      localStorage.setItem(clave, JSON.stringify(lista));
+    } catch (_) { /* localStorage deshabilitado: se ignora sin romper la UI */ }
+
+    // Feedback visual y cierre automático
+    form.classList.add("hidden");
+    reportOk.classList.remove("hidden");
+    setTimeout(cerrarModal, 1800);
+  });
+
+  /* ==============================================================
+     7) ARRANQUE
+     ============================================================== */
+  renderTarjetas(PROTOCOLOS);
+  </script>
+</body>
+</html>
