@@ -1298,4 +1298,33 @@
   </script>
 </body>
 </html>
+<script>
+// Reemplaza con tu usuario y nombre de repositorio
+const REPO_OWNER = "miqueas80";
+const REPO_NAME = "laboratorio-escolar-tecnico";
+
+async function cargarArchivosDesdeGitHub() {
+    try {
+        // Consultamos la API de GitHub para listar las carpetas/archivos principales
+        // Podés apuntar a una carpeta específica, ej: /contents/protocolos
+        const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/`);
+        const items = await response.json();
+
+        // Filtramos los archivos que nos interesan (PDFs, documentos, etc.)
+        const archivos = items.filter(item => item.type === "file" && item.name !== "index.html" && item.name !== "datos.js");
+
+        console.log("Archivos encontrados en el repositorio:", archivos);
+        
+        // Acá podés inyectar los archivos directamente en tu contenedor de tarjetas existente
+        // El buscador que ya tenés armado filtrará estos nombres automáticamente.
+        
+    } catch (error) {
+        console.error("Error al cargar los archivos:", error);
+    }
+}
+
+// Ejecutar al cargar la página
+document.addEventListener("DOMContentLoaded", cargarArchivosDesdeGitHub);
+</script>
+
 
