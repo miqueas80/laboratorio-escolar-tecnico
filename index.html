@@ -1,477 +1,983 @@
-<!DOCTYPE html>
+<!-- index.html — Command Center de Protocolos · Diseño original + motor de búsqueda optimizado -->
+<!doctype html>
 <html lang="es">
-<head>
+ <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Command Center de Protocolos | Laboratorio Técnico</title>
-  <meta name="description" content="Centro de comando de protocolos y manuales del laboratorio de la escuela técnica.">
-
-  <!-- ============================================================
-       TAILWIND CSS vía CDN (única dependencia externa, liviana).
-       Se configura el tema oscuro y colores de acento del lab.
-       ============================================================ -->
-  <script src="[cdn.tailwindcss.com](https://cdn.tailwindcss.com)"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            base:    '#0b1120', // Fondo principal
-            panel:   '#111a2e', // Paneles / tarjetas
-            border:  '#1e2a45', // Bordes sutiles
-            accent:  '#22d3ee', // Cian de acento (command center)
-          },
-          boxShadow: {
-            card: '0 4px 20px rgba(0,0,0,.35)',
-            glow: '0 0 0 1px rgba(34,211,238,.35), 0 4px 24px rgba(34,211,238,.12)',
-          }
-        }
-      }
-    }
-  </script>
-
-  <!-- Micro-estilos que Tailwind CDN no cubre (scrollbar, animación de entrada) -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Command Center · Protocolos de Laboratorio</title>
+  <meta name="description" content="Buscador inteligente y panel de control para protocolos de laboratorio escolar.">
   <style>
-    ::-webkit-scrollbar { width: 8px; }
-    ::-webkit-scrollbar-track { background: #0b1120; }
-    ::-webkit-scrollbar-thumb { background: #1e2a45; border-radius: 4px; }
-
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(8px); }
-      to   { opacity: 1; transform: translateY(0); }
+    :root{
+      --bg0:#070A12;
+      --bg1:#0B1223;
+      --card: rgba(255,255,255,.06);
+      --card2: rgba(255,255,255,.085);
+      --stroke: rgba(255,255,255,.12);
+      --text:#EAF0FF;
+      --muted: rgba(234,240,255,.72);
+      --muted2: rgba(234,240,255,.55);
+      --shadow: 0 18px 55px rgba(0,0,0,.35);
+      --shadow2: 0 10px 30px rgba(0,0,0,.25);
+      --ring: rgba(110,231,255,.35);
+      --ring2: rgba(167,139,250,.35);
+      --accent:#6EE7FF;
+      --accent2:#A78BFA;
+      --good:#34D399;
+      --warn:#FBBF24;
+      --bad:#FB7185;
+      --info:#60A5FA;
+      --radius: 16px;
+      --radius2: 22px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
     }
-    .card-enter { animation: fadeUp .25s ease-out both; }
 
-    /* Resaltado de coincidencias de búsqueda */
-    mark {
-      background: rgba(34, 211, 238, .25);
-      color: #a5f3fc;
-      border-radius: 3px;
+    *{ box-sizing:border-box; }
+    html, body { height:100%; }
+    body{
+      margin:0;
+      font-family: var(--sans);
+      color: var(--text);
+      background:
+        radial-gradient(1000px 650px at 15% 10%, rgba(110,231,255,.20), transparent 55%),
+        radial-gradient(900px 550px at 85% 20%, rgba(167,139,250,.18), transparent 50%),
+        radial-gradient(800px 500px at 50% 90%, rgba(52,211,153,.10), transparent 50%),
+        linear-gradient(180deg, var(--bg0), var(--bg1));
+      overflow-x:hidden;
+    }
+
+    a{ color:inherit; text-decoration:none; }
+    button, input, textarea { font:inherit; }
+    :focus-visible{ outline: 3px solid var(--ring); outline-offset: 2px; border-radius: 10px; }
+
+    /* Resaltado de coincidencias (nuevo, integrado a la paleta original) */
+    mark{
+      background: rgba(110,231,255,.22);
+      color: #BDEFFF;
+      border-radius: 4px;
       padding: 0 2px;
     }
+
+    .wrap{ width:min(1200px, 92vw); margin: 0 auto; padding: 28px 0 64px; }
+
+    .topbar{ display:flex; align-items:flex-start; justify-content:space-between; gap: 16px; margin-bottom: 18px; }
+    .brand{ display:flex; gap: 12px; align-items:flex-start; min-width: 280px; }
+    .logo{
+      width: 42px; height: 42px; border-radius: 14px;
+      background:
+        radial-gradient(circle at 30% 20%, rgba(255,255,255,.35), transparent 40%),
+        linear-gradient(135deg, rgba(110,231,255,.9), rgba(167,139,250,.9));
+      box-shadow: 0 10px 24px rgba(110,231,255,.12);
+      display:grid; place-items:center;
+      border: 1px solid rgba(255,255,255,.18);
+      flex: 0 0 auto;
+    }
+    .logo svg{ opacity:.95; }
+    .brand h1{ margin:0; font-size: 16px; line-height:1.25; letter-spacing:.2px; }
+    .brand p{ margin: 4px 0 0; color: var(--muted); font-size: 13px; line-height:1.35; max-width: 520px; }
+
+    .panel{
+      background: rgba(255,255,255,.03);
+      border: 1px solid var(--stroke);
+      border-radius: var(--radius2);
+      box-shadow: var(--shadow2);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      padding: 14px;
+      overflow:hidden;
+      position: relative;
+    }
+    .panel:before{
+      content:"";
+      position:absolute; inset:-2px;
+      background:
+        radial-gradient(800px 150px at 30% 0%, rgba(110,231,255,.14), transparent 60%),
+        radial-gradient(800px 200px at 70% 0%, rgba(167,139,250,.12), transparent 60%);
+      pointer-events:none; opacity:.9;
+    }
+    .panel > *{ position: relative; }
+
+    .searchGrid{ display:grid; grid-template-columns: 1fr auto; gap: 12px; align-items:center; margin-top: 10px; }
+    .searchBar{
+      position: relative; border-radius: 16px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.12);
+      padding: 12px 12px;
+      display:flex; gap: 10px; align-items:center;
+    }
+    .searchIcon{
+      width: 38px; height: 38px; border-radius: 14px;
+      background: rgba(255,255,255,.06);
+      display:grid; place-items:center;
+      border: 1px solid rgba(255,255,255,.10);
+      flex: 0 0 auto;
+    }
+    .searchBar input{
+      width:100%; background: transparent; border:none; outline:none;
+      color: var(--text); font-size: 14.5px; padding: 2px 0;
+    }
+    .searchBar input::placeholder{ color: rgba(234,240,255,.50); }
+
+    .kbd{
+      font-family: var(--mono); font-size: 12px; color: rgba(234,240,255,.65);
+      border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.04);
+      padding: 6px 8px; border-radius: 12px; white-space:nowrap;
+    }
+
+    .filters{ display:flex; flex-wrap:wrap; gap: 8px; align-items:center; margin-top: 12px; }
+    .chip{
+      appearance:none;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.04);
+      color: var(--muted);
+      border-radius: 999px; padding: 8px 12px; cursor:pointer;
+      transition: transform .12s ease, background .12s ease, border-color .12s ease, color .12s ease;
+      font-size: 13px; display:flex; align-items:center; gap: 8px; user-select:none;
+    }
+    .chip:hover{ transform: translateY(-1px); border-color: rgba(110,231,255,.35); color: rgba(234,240,255,.92); }
+    .chip[aria-pressed="true"]{
+      background: linear-gradient(135deg, rgba(110,231,255,.18), rgba(167,139,250,.18));
+      border-color: rgba(110,231,255,.45);
+      color: rgba(234,240,255,.98);
+      box-shadow: 0 10px 30px rgba(110,231,255,.10);
+    }
+    .chip .dot{ width:10px; height:10px; border-radius:50%; background: rgba(255,255,255,.35); border: 1px solid rgba(255,255,255,.20); }
+
+    .resultsHead{ display:flex; justify-content:space-between; align-items: center; gap: 10px; margin: 18px 0 10px; }
+    .resultsHead .left{ display:flex; flex-direction:column; gap:4px; }
+    .resultsHead h2{ margin:0; font-size: 14px; color: rgba(234,240,255,.9); letter-spacing:.2px; }
+    .resultsHead .sub{ color: var(--muted2); font-size: 12.5px; }
+
+    .sortBtn{
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.04);
+      color: var(--muted);
+      padding: 10px 12px; cursor:pointer;
+      transition: transform .12s ease, border-color .12s ease, color .12s ease;
+      display:flex; align-items:center; gap: 10px;
+      font-size: 13px; white-space: nowrap;
+    }
+    .sortBtn:hover{ transform: translateY(-1px); border-color: rgba(167,139,250,.35); color: rgba(234,240,255,.92); }
+
+    .grid{ display:grid; grid-template-columns: repeat(12, 1fr); gap: 12px; margin-top: 10px; }
+    .card{
+      grid-column: span 6;
+      background: rgba(255,255,255,.045);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: var(--radius);
+      padding: 14px;
+      box-shadow: 0 12px 30px rgba(0,0,0,.18);
+      position: relative; overflow:hidden;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: transform .14s ease, border-color .14s ease, background .14s ease;
+      min-height: 220px;
+      display:flex; flex-direction:column; gap: 10px;
+    }
+    .card:hover{ transform: translateY(-2px); border-color: rgba(110,231,255,.22); background: rgba(255,255,255,.055); }
+    .card:before{
+      content:"";
+      position:absolute; inset:-1px;
+      background:
+        radial-gradient(320px 120px at 10% 0%, rgba(110,231,255,.18), transparent 50%),
+        radial-gradient(300px 120px at 90% 0%, rgba(167,139,250,.15), transparent 55%);
+      opacity: .65; pointer-events:none;
+    }
+    .card > *{ position: relative; }
+
+    .cardTop{ display:flex; gap: 10px; justify-content:space-between; align-items:flex-start; }
+    .titleWrap{ display:flex; flex-direction:column; gap: 6px; min-width: 0; }
+    .cardTitle{
+      margin:0; font-size: 15.5px; letter-spacing:.2px; line-height:1.25;
+      display:flex; align-items:center; gap: 10px; flex-wrap:wrap;
+    }
+
+    .badge{
+      display:inline-flex; align-items:center; gap: 7px;
+      padding: 6px 10px; border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.04);
+      color: var(--muted); font-size: 12.5px;
+      user-select:none; white-space:nowrap;
+    }
+    .badge .pill{ width:9px; height:9px; border-radius:50%; background: rgba(255,255,255,.35); border: 1px solid rgba(255,255,255,.2); }
+
+    .urgency{ display:flex; align-items:center; gap: 8px; justify-content:flex-end; flex: 0 0 auto; }
+    .urgency .level{
+      font-family: var(--mono); font-size: 12px;
+      padding: 8px 10px; border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.04);
+      color: rgba(234,240,255,.85);
+      display:flex; gap: 8px; align-items:center;
+      user-select:none; white-space:nowrap;
+    }
+    .urgency .level .sig{ width:10px; height:10px; border-radius:50%; background: rgba(255,255,255,.3); border: 1px solid rgba(255,255,255,.2); }
+
+    .summary{ margin:0; color: var(--muted); font-size: 13px; line-height:1.45; }
+
+    .tags{ display:flex; flex-wrap:wrap; gap: 8px; margin-top: 2px; }
+    .tag{
+      font-size: 12.5px; color: rgba(234,240,255,.78);
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.03);
+      padding: 6px 10px; border-radius: 999px; user-select:none;
+    }
+
+    .stepsPreview{ margin: 0; padding-left: 18px; color: rgba(234,240,255,.75); font-size: 13px; line-height:1.45; }
+    .stepsPreview li{ margin: 4px 0; }
+
+    .cardActions{ margin-top:auto; display:flex; gap: 10px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
+    .actionsLeft{ display:flex; gap: 10px; flex-wrap:wrap; }
+
+    .btn{
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.04);
+      color: rgba(234,240,255,.88);
+      padding: 10px 12px; cursor:pointer;
+      transition: transform .12s ease, border-color .12s ease, background .12s ease;
+      display:flex; align-items:center; gap: 10px;
+      font-size: 13px; user-select:none; white-space:nowrap;
+    }
+    .btn:hover{ transform: translateY(-1px); border-color: rgba(110,231,255,.35); background: rgba(255,255,255,.06); }
+    .btn.primary{ border-color: rgba(110,231,255,.45); background: linear-gradient(135deg, rgba(110,231,255,.16), rgba(167,139,250,.12)); }
+    .btn.danger{ border-color: rgba(251,113,133,.35); background: rgba(251,113,133,.08); }
+
+    .empty{
+      grid-column: 1 / -1;
+      border: 1px dashed rgba(255,255,255,.18);
+      background: rgba(255,255,255,.03);
+      border-radius: var(--radius);
+      padding: 18px;
+      display:flex; align-items:center; justify-content:space-between; gap: 14px;
+    }
+    .empty h3{ margin:0; font-size: 14.5px; letter-spacing:.2px; }
+    .empty p{ margin: 6px 0 0; color: var(--muted); font-size: 13px; line-height:1.4; }
+
+    .modalOverlay{
+      position: fixed; inset:0;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display:none; align-items:center; justify-content:center;
+      padding: 18px; z-index: 50;
+    }
+    .modalOverlay[aria-hidden="false"]{ display:flex; }
+
+    .modal{
+      width: min(860px, 96vw);
+      max-height: min(86vh, 760px);
+      overflow:auto;
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,.15);
+      background: rgba(12,18,35,.75);
+      box-shadow: var(--shadow);
+      position: relative;
+    }
+    .modalHeader{
+      position: sticky; top: 0;
+      background: linear-gradient(180deg, rgba(12,18,35,.92), rgba(12,18,35,.70));
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      padding: 14px 14px;
+      display:flex; align-items:flex-start; justify-content:space-between; gap: 12px;
+      z-index: 2;
+    }
+    .modalHeader h3{ margin:0; font-size: 15.5px; letter-spacing:.2px; }
+    .modalHeader .meta{ margin-top: 6px; display:flex; flex-wrap:wrap; gap: 8px; color: var(--muted); font-size: 12.8px; }
+    .closeBtn{
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.04);
+      color: rgba(234,240,255,.9);
+      cursor:pointer; padding: 10px 12px;
+      display:flex; align-items:center; gap: 10px;
+      transition: transform .12s ease, border-color .12s ease;
+      white-space:nowrap;
+    }
+    .closeBtn:hover{ transform: translateY(-1px); border-color: rgba(255,255,255,.25); }
+
+    .modalBody{ padding: 14px; display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .modalBody .box{
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.035);
+      padding: 12px;
+    }
+    .modalBody .box h4{ margin:0 0 8px; font-size: 13px; letter-spacing:.2px; color: rgba(234,240,255,.9); }
+    .modalBody .box p{ margin:0; color: var(--muted); font-size: 13px; line-height:1.5; }
+    .modalBody .steps{ margin: 0; padding-left: 18px; color: rgba(234,240,255,.78); font-size: 13px; line-height:1.5; }
+
+    .editForm label{ display:block; font-size: 12.5px; color: var(--muted2); margin-bottom: 6px; }
+    .editForm textarea{
+      width:100%; min-height: 96px; resize: vertical;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.04);
+      color: var(--text);
+      padding: 10px 12px; outline:none;
+    }
+    .modalFooter{ padding: 0 14px 14px; display:flex; justify-content:space-between; align-items:center; gap: 10px; flex-wrap:wrap; }
+    .note{ color: var(--muted2); font-size: 12.5px; line-height:1.35; }
+
+    .floating{
+      position: fixed; right: 14px; bottom: 14px; z-index: 60;
+      width: min(380px, 92vw); pointer-events:none;
+    }
+    .floating .cardMini{
+      pointer-events:auto;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.15);
+      background: rgba(12,18,35,.72);
+      box-shadow: var(--shadow2);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      padding: 12px;
+      display:flex; gap: 12px; align-items:flex-start;
+    }
+    .floating .cardMini .icon{
+      width: 40px; height: 40px; border-radius: 14px;
+      background: rgba(251,113,133,.10);
+      border: 1px solid rgba(251,113,133,.30);
+      display:grid; place-items:center; flex: 0 0 auto;
+    }
+    .floating h4{ margin:0; font-size: 13.5px; letter-spacing:.2px; }
+    .floating p{ margin: 6px 0 10px; color: var(--muted); font-size: 12.8px; line-height:1.35; }
+    .floating .row{ display:flex; gap: 10px; flex-wrap:wrap; align-items:center; }
+    .floating .btnSmall{
+      padding: 10px 12px; border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.04);
+      color: rgba(234,240,255,.92);
+      cursor:pointer;
+      transition: transform .12s ease, border-color .12s ease;
+      font-size: 13px; white-space:nowrap;
+      display:flex; align-items:center; gap: 10px;
+    }
+    .floating .btnSmall:hover{ transform: translateY(-1px); border-color: rgba(251,113,133,.35); }
+
+    @media (max-width: 920px){
+      .card{ grid-column: span 12; }
+      .modalBody{ grid-template-columns: 1fr; }
+    }
+    @media (max-width: 560px){
+      .topbar{ flex-direction:column; }
+      .searchGrid{ grid-template-columns: 1fr; }
+      .kbd{ display:none; }
+      .card{ min-height: 235px; }
+    }
   </style>
-</head>
-
-<body class="bg-base text-slate-200 min-h-screen antialiased">
-
-  <!-- ============================================================
-       ENCABEZADO
-       ============================================================ -->
-  <header class="border-b border-border bg-panel/70 backdrop-blur sticky top-0 z-40">
-    <div class="max-w-6xl mx-auto px-4 py-4 flex flex-col sm:flex-row sm:items-center gap-4">
-      <div class="flex items-center gap-3 shrink-0">
-        <!-- Logo simple en SVG inline (sin peticiones extra) -->
-        <svg class="w-9 h-9 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-          <path d="M12 2 3 7v10l9 5 9-5V7l-9-5z"/><path d="M12 22V12"/><path d="M3 7l9 5 9-5"/>
-        </svg>
-        <div>
-          <h1 class="text-lg font-bold tracking-wide text-white leading-tight">Command Center de Protocolos</h1>
-          <p class="text-xs text-slate-400">Laboratorio — Escuela Técnica</p>
-        </div>
-      </div>
-
-      <!-- Buscador principal -->
-      <div class="relative flex-1">
-        <svg class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"
-             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>
-        </svg>
-        <input id="searchInput" type="search" autocomplete="off" spellcheck="false"
-               placeholder="Buscar protocolo, categoría o paso… (ej: soldadura, quimico, apagon)"
-               class="w-full bg-base border border-border rounded-xl pl-10 pr-24 py-2.5 text-sm
-                      placeholder-slate-500 focus:outline-none focus:border-accent focus:shadow-glow transition">
-        <span id="resultCount"
-              class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500"></span>
-      </div>
-    </div>
-  </header>
-
-  <!-- ============================================================
-       CONTENIDO PRINCIPAL
-       ============================================================ -->
-  <main class="max-w-6xl mx-auto px-4 py-8">
-
-    <!-- Grilla de tarjetas (se renderiza por JS) -->
-    <section id="cardsGrid" class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3" aria-live="polite"></section>
-
-    <!-- Estado vacío: sin coincidencias -->
-    <section id="emptyState" class="hidden text-center py-20">
-      <svg class="w-14 h-14 mx-auto text-slate-600 mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/><path d="M8 11h6"/>
+ </head>
+ <body>
+  <main class="wrap">
+   <header class="topbar" aria-label="Encabezado">
+    <div class="brand">
+     <div class="logo" aria-hidden="true">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+       <path d="M12 2l9 5v10l-9 5-9-5V7l9-5z" stroke="white" stroke-opacity=".85" stroke-width="1.6"/>
+       <path d="M8.2 10.5c1.2-2.8 6.4-2.7 7.6 0 1.1 2.5-1.1 5.2-3.8 5.2-2.7 0-4.9-2.7-3.8-5.2z" fill="white" fill-opacity=".12"/>
       </svg>
-      <h2 class="text-lg font-semibold text-slate-300 mb-1">Sin coincidencias</h2>
-      <p class="text-sm text-slate-500 mb-5">No se encontraron protocolos para <span id="emptyQuery" class="text-accent font-mono"></span>.</p>
-      <button id="clearBtn"
-              class="bg-accent/10 border border-accent/40 text-accent text-sm font-semibold
-                     px-5 py-2 rounded-lg hover:bg-accent/20 transition">
-        Limpiar filtros
-      </button>
-    </section>
+     </div>
+     <div>
+      <h1>Command Center · Protocolos Inteligentes</h1>
+      <p>Busca por palabras, etiquetas o categorías. Filtrado instantáneo (solo cliente). Ideal para laboratorios de escuelas técnicas.</p>
+     </div>
+    </div>
+    <div class="panel" style="flex:1; min-width: 280px;">
+     <div class="searchGrid">
+      <div class="searchBar" role="search">
+       <div class="searchIcon" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+         <path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15z" stroke="white" stroke-opacity=".85" stroke-width="1.8"/>
+         <path d="M16.3 16.3L21 21" stroke="white" stroke-opacity=".85" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+       </div>
+       <label for="q" style="position:absolute; left:-9999px;">Buscar protocolos</label>
+       <input id="q" type="search" placeholder="Buscar: derrames, microscopio, soldadura, reactivos…" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="kbd" title="Atajo de teclado">⌨️ / para buscar</div>
+     </div>
+     <div class="filters" aria-label="Filtros rápidos por categoría">
+      <button class="chip" type="button" data-filter="__all__" aria-pressed="true"><span class="dot" aria-hidden="true"></span> Todas</button>
+      <button class="chip" type="button" data-filter="Seguridad" aria-pressed="false"><span class="dot" aria-hidden="true" style="background:rgba(251,191,36,.55); border-color:rgba(251,191,36,.35)"></span> Seguridad</button>
+      <button class="chip" type="button" data-filter="Equipos" aria-pressed="false"><span class="dot" aria-hidden="true" style="background:rgba(110,231,255,.55); border-color:rgba(110,231,255,.35)"></span> Equipos</button>
+      <button class="chip" type="button" data-filter="Reactivos" aria-pressed="false"><span class="dot" aria-hidden="true" style="background:rgba(167,139,250,.55); border-color:rgba(167,139,250,.35)"></span> Reactivos</button>
+      <button class="chip" type="button" data-filter="Emergencias" aria-pressed="false"><span class="dot" aria-hidden="true" style="background:rgba(251,113,133,.55); border-color:rgba(251,113,133,.35)"></span> Emergencias</button>
+     </div>
+    </div>
+   </header>
+
+   <section class="resultsHead" aria-label="Resumen de resultados">
+    <div class="left">
+     <h2>Protocolos disponibles</h2>
+     <div class="sub" id="resultsMeta">Escribe para filtrar…</div>
+    </div>
+    <button class="sortBtn" id="toggleUrgency" type="button" title="Ordenar por urgencia / relevancia"><span aria-hidden="true">⚡</span> Orden: <span id="sortLabel">Relevancia</span></button>
+   </section>
+
+   <section class="grid" id="grid" aria-live="polite" aria-label="Listado de tarjetas de protocolos">
+    <!-- tarjetas inyectadas por JS -->
+   </section>
   </main>
 
-  <!-- ============================================================
-       BOTÓN FLOTANTE + MODAL DE REPORTES / SUGERENCIAS
-       ============================================================ -->
-  <button id="openReport" title="Reportar error o sugerir corrección"
-          class="fixed bottom-5 right-5 z-40 bg-accent text-base font-bold text-sm px-4 py-3
-                 rounded-full shadow-glow hover:scale-105 transition flex items-center gap-2">
-    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.4 8.7 8.7 0 0 1-3.8-.9L3 21l2-5.4a8.3 8.3 0 0 1-1-4A8.4 8.4 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5z"/>
-    </svg>
-    Reportar
-  </button>
-
-  <!-- Overlay del modal -->
-  <div id="reportModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
-    <div id="modalBackdrop" class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
-
-    <div class="relative bg-panel border border-border rounded-2xl shadow-card w-full max-w-md p-6 card-enter">
-      <button id="closeReport" aria-label="Cerrar"
-              class="absolute top-3 right-3 text-slate-500 hover:text-white text-xl leading-none px-2">&times;</button>
-
-      <h2 class="text-lg font-bold text-white mb-1">Reporte / Sugerencia</h2>
-      <p class="text-xs text-slate-400 mb-4">¿Encontraste un error en un protocolo o querés proponer una mejora? Completá el formulario.</p>
-
-      <form id="reportForm" class="space-y-3">
-        <div>
-          <label for="repProto" class="block text-xs font-semibold text-slate-400 mb-1">Protocolo relacionado</label>
-          <select id="repProto" required
-                  class="w-full bg-base border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent">
-            <option value="">Seleccionar…</option>
-            <!-- Opciones generadas dinámicamente desde el array de datos -->
-          </select>
-        </div>
-        <div>
-          <label for="repName" class="block text-xs font-semibold text-slate-400 mb-1">Tu nombre y curso</label>
-          <input id="repName" type="text" required maxlength="60" placeholder="Ej: Julián P. — 5°B Electrónica"
-                 class="w-full bg-base border border-border rounded-lg px-3 py-2 text-sm placeholder-slate-600 focus:outline-none focus:border-accent">
-        </div>
-        <div>
-          <label for="repMsg" class="block text-xs font-semibold text-slate-400 mb-1">Descripción del error o sugerencia</label>
-          <textarea id="repMsg" required rows="4" maxlength="500" placeholder="Describí el problema o la mejora propuesta…"
-                    class="w-full bg-base border border-border rounded-lg px-3 py-2 text-sm placeholder-slate-600 focus:outline-none focus:border-accent resize-none"></textarea>
-        </div>
-        <button type="submit"
-                class="w-full bg-accent text-base font-bold text-sm py-2.5 rounded-lg hover:brightness-110 transition">
-          Enviar reporte
-        </button>
-      </form>
-
-      <!-- Confirmación tras el envío (los reportes quedan en localStorage
-           para que el docente los revise desde la consola o una futura vista) -->
-      <div id="reportOk" class="hidden text-center py-6">
-        <div class="text-4xl mb-2">✅</div>
-        <p class="text-sm text-slate-300 font-semibold">¡Reporte registrado!</p>
-        <p class="text-xs text-slate-500 mt-1">Gracias por ayudar a mejorar los protocolos del laboratorio.</p>
-      </div>
-    </form>
+  <!-- Modal de lectura/edición/reporte -->
+  <div class="modalOverlay" id="modalOverlay" aria-hidden="true">
+   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modalHeader">
+     <div>
+      <h3 id="modalTitle">Protocolo</h3>
+      <div class="meta" id="modalMeta"></div>
+     </div>
+     <button class="closeBtn" type="button" id="closeModal" aria-label="Cerrar"><span aria-hidden="true">✕</span> Cerrar</button>
     </div>
+    <div class="modalBody">
+     <div class="box">
+      <h4>Resumen de pasos</h4>
+      <ol class="steps" id="modalSteps"></ol>
+     </div>
+     <div class="box editForm">
+      <h4>Reportar error / sugerir corrección</h4>
+      <label for="modalReport">Escribe tu observación (ej: “falta mencionar neutralización”, “ajustar concentración”, etc.)</label>
+      <textarea id="modalReport" maxlength="900" placeholder="Tu sugerencia se guarda localmente en este navegador (demo)."></textarea>
+      <div class="note" style="margin-top:10px;">
+       ✅ Esto es una demo: la corrección se almacena en <span style="font-family:var(--mono)">localStorage</span>.
+      </div>
+     </div>
+    </div>
+    <div class="modalFooter">
+     <div class="note" id="modalSavedMeta">—</div>
+     <div class="row" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+      <button class="btn danger" type="button" id="clearReportBtn" title="Borrar el texto del reporte"><span aria-hidden="true">🧹</span> Limpiar</button>
+      <button class="btn primary" type="button" id="saveReportBtn"><span aria-hidden="true">📝</span> Enviar reporte (demo)</button>
+     </div>
+    </div>
+   </div>
   </div>
 
-  <!-- ============================================================
-       LÓGICA DE LA APLICACIÓN
-       ============================================================ -->
+  <!-- Tarjeta flotante -->
+  <aside class="floating" aria-label="Reportar error de forma rápida">
+   <div class="cardMini">
+    <div class="icon" aria-hidden="true">
+     <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path d="M12 9v4" stroke="white" stroke-opacity=".9" stroke-width="2" stroke-linecap="round"/>
+      <path d="M12 17h.01" stroke="white" stroke-opacity=".9" stroke-width="3" stroke-linecap="round"/>
+      <path d="M10.3 3.9L2.6 18.2a2 2 0 0 0 1.8 3h15.2a2 2 0 0 0 1.8-3L13.7 3.9a2 2 0 0 0-3.4 0z" stroke="white" stroke-opacity=".85" stroke-width="1.6"/>
+     </svg>
+    </div>
+    <div style="flex:1; min-width: 0;">
+     <h4>¿Encontraste un error o mejora? 🛠️</h4>
+     <p>Este contenido puede corregirse. Abre un protocolo, escribe tu sugerencia y “Enviar reporte (demo)”.</p>
+     <div class="row">
+      <button class="btnSmall" type="button" id="jumpToFirst"><span aria-hidden="true">🔎</span> Abrir primer resultado</button>
+      <button class="btnSmall" type="button" id="openHelpModal" title="Cómo funciona"><span aria-hidden="true">💡</span> Cómo funciona</button>
+     </div>
+    </div>
+   </div>
+  </aside>
+
   <script>
-  'use strict';
+    (() => {
+      'use strict';
 
-  /* ==============================================================
-     1) BASE DE DATOS DE PROTOCOLOS
-     --------------------------------------------------------------
-     Para agregar un nuevo manual/PDF, basta con añadir UN objeto
-     más a este array. El campo `pdf` es la ruta RELATIVA dentro
-     del repositorio (ej: carpeta /pdfs/ en la raíz de GitHub Pages).
+      /* ==============================================================
+         1) BASE DE DATOS DE PROTOCOLOS
+         Para agregar un protocolo, sumá un objeto más a este array.
+         ============================================================== */
+      const protocols = [
+        {
+          id: "MICRO_01",
+          title: "Uso seguro del microscopio (enfoque, limpieza y postura)",
+          category: "Equipos",
+          urgency: "Info",
+          urgencyLevel: "info",
+          tags: ["microscopio", "enfoque", "limpieza", "postura", "equipos"],
+          summary: "Procedimiento para operar el microscopio sin dañar lentes, incluyendo limpieza y recomendaciones ergonómicas.",
+          steps: [
+            "Verifica el estado general: cables, platina y perilla de enfoque.",
+            "Comienza con el objetivo de menor aumento (p. ej. 4x/10x) y ajusta iluminación.",
+            "Enfoca lentamente: primero eleva/baja con enfoque grueso y luego afina con enfoque fino.",
+            "Para limpieza: usa solo paño para lentes (sin frotar seco fuerte). No soplar lentes."
+          ],
+          content: "El objetivo es proteger lentes y evitar rayas. Ajusta iluminación gradualmente, usa siempre el menor aumento al iniciar y cuida la postura (espalda recta, movimientos suaves)."
+        },
+        {
+          id: "DERR_A06",
+          title: "Normas ante derrames de ácidos: contención, neutralización y reporte",
+          category: "Reactivos",
+          urgency: "Alta",
+          urgencyLevel: "bad",
+          tags: ["derrames", "ácidos", "neutralización", "EPP", "seguridad"],
+          summary: "Pasos para contener un derrame de ácido, proteger al personal y gestionar la neutralización y el descarte.",
+          steps: [
+            "Avisa al docente y delimita el área; evita que el derrame alcance desagües.",
+            "Colócate EPP: guantes resistentes, bata, protección ocular y calzado adecuado.",
+            "Contén con material absorbente/neutralizante según el instructivo del laboratorio.",
+            "Neutraliza con cuidado (si aplica), recolecta residuos en recipiente rotulado y reporta el incidente."
+          ],
+          content: "Controla la propagación, usa material absorbente compatible y sigue la ficha de seguridad. No uses agua a menos que el protocolo del reactivo lo indique."
+        },
+        {
+          id: "METAL_02",
+          title: "Soldadura y metalurgia segura: preparación, ventilación y verificación",
+          category: "Seguridad",
+          urgency: "Media",
+          urgencyLevel: "warn",
+          tags: ["soldadura", "metalurgia", "ventilación", "EPP", "riesgo térmico"],
+          summary: "Checklist para soldadura: ventilación, EPP, inspección del equipo y manejo de riesgos térmicos.",
+          steps: [
+            "Revisa el equipo y cables; confirma que la toma y el protector estén en condiciones.",
+            "Usa careta/antiparras, guantes y ropa de algodón. Mantén el área libre de combustibles.",
+            "Asegura ventilación/extracción; no dirijas chispas a personas ni a materiales inflamables.",
+            "Realiza pruebas en un material de práctica; registra cualquier falla o daño del equipo."
+          ],
+          content: "La prioridad es prevenir quemaduras y riesgos por humos. Mantén extintor disponible y sigue el instructivo del taller."
+        },
+        {
+          id: "EMERG_09",
+          title: "Emergencia: protocolo básico ante exposición o lesión durante el laboratorio",
+          category: "Emergencias",
+          urgency: "Crítica",
+          urgencyLevel: "bad",
+          tags: ["emergencias", "primeros auxilios", "accidente", "exposición", "docente"],
+          summary: "Acciones inmediatas: detener actividad, evaluar seguridad, asistir y comunicar según el caso.",
+          steps: [
+            "Detén la actividad y asegúrate de que la zona sea segura (corta equipos si corresponde).",
+            "Avísale de inmediato al docente/brigada; no improvisar tratamientos fuera del marco del laboratorio.",
+            "Si hubo contacto: retira fuente de exposición según indicación del protocolo del reactivo/material.",
+            "Registra: qué pasó, tiempos aproximados, reactivos/equipos involucrados y medidas tomadas."
+          ],
+          content: "Ante dudas: prioriza evacuación/seguridad y comunicación. Se recomienda seguir cartelería del establecimiento."
+        }
+      ];
 
-     urgencia admitida: "critico" | "alto" | "medio" | "bajo"
-     ============================================================== */
-  const PROTOCOLOS = [
-    {
-      categoria: "Seguridad Eléctrica",
-      urgencia: "critico",
-      titulo: "Corte de energía y bloqueo de tableros (LOTO)",
-      resumen: "Procedimiento de bloqueo y etiquetado antes de intervenir circuitos o máquinas del taller.",
-      pasos: [
-        "Identificar el tablero y circuito a intervenir.",
-        "Cortar la alimentación desde la llave termomagnética.",
-        "Colocar candado y tarjeta de bloqueo (LOTO).",
-        "Verificar ausencia de tensión con multímetro.",
-        "Recién entonces iniciar la tarea."
-      ],
-      pdf: "pdfs/protocolo-loto.pdf"
-    },
-    {
-      categoria: "Primeros Auxilios",
-      urgencia: "critico",
-      titulo: "Respuesta ante electrocución",
-      resumen: "Acciones inmediatas frente a un compañero en contacto con corriente eléctrica.",
-      pasos: [
-        "NO tocar a la víctima directamente.",
-        "Cortar la energía general del sector.",
-        "Avisar al docente y llamar al 107.",
-        "Iniciar RCP solo si estás capacitado.",
-        "Registrar el incidente en el libro de laboratorio."
-      ],
-      pdf: "pdfs/protocolo-electrocucion.pdf"
-    },
-    {
-      categoria: "Química",
-      urgencia: "alto",
-      titulo: "Derrame de sustancias químicas",
-      resumen: "Contención y limpieza segura de derrames de ácidos, solventes o reactivos.",
-      pasos: [
-        "Alertar a todos y ventilar el ambiente.",
-        "Colocarse guantes y gafas de protección.",
-        "Contener el derrame con material absorbente.",
-        "Desechar residuos en el contenedor rotulado.",
-        "Informar al docente responsable."
-      ],
-      pdf: "pdfs/protocolo-derrames.pdf"
-    },
-    {
-      categoria: "Taller",
-      urgencia: "alto",
-      titulo: "Uso seguro de estación de soldadura",
-      resumen: "Manual de operación de soldadores de estaño y estaciones de aire caliente.",
-      pasos: [
-        "Verificar el estado del cable y la punta.",
-        "Trabajar sobre alfombra antiestática.",
-        "Usar extractor de humos o ventilación.",
-        "Apoyar siempre el soldador en su soporte.",
-        "Apagar y desenchufar al finalizar."
-      ],
-      pdf: "pdfs/manual-soldadura.pdf"
-    },
-    {
-      categoria: "Incendios",
-      urgencia: "critico",
-      titulo: "Evacuación y uso de extintores",
-      resumen: "Plan de evacuación del laboratorio y clasificación de extintores según tipo de fuego.",
-      pasos: [
-        "Activar la alarma y avisar al docente.",
-        "Cortar energía y gas si es seguro hacerlo.",
-        "Usar extintor ABC solo en focos incipientes.",
-        "Evacuar por la salida señalizada, sin correr.",
-        "Reunirse en el punto de encuentro del patio."
-      ],
-      pdf: "pdfs/protocolo-incendios.pdf"
-    },
-    {
-      categoria: "Informática",
-      urgencia: "medio",
-      titulo: "Mantenimiento preventivo de netbooks",
-      resumen: "Rutina mensual de limpieza física y lógica del parque de netbooks escolares.",
-      pasos: [
-        "Apagar y desconectar el equipo.",
-        "Limpiar teclado y ventilaciones con aire comprimido.",
-        "Verificar actualizaciones del sistema.",
-        "Ejecutar chequeo de disco y antivirus.",
-        "Registrar el mantenimiento en la planilla."
-      ],
-      pdf: "pdfs/manual-netbooks.pdf"
-    },
-    {
-      categoria: "Laboratorio",
-      urgencia: "bajo",
-      titulo: "Orden y devolución de instrumental",
-      resumen: "Procedimiento de préstamo, uso y devolución de instrumentos de medición.",
-      pasos: [
-        "Solicitar el instrumento al pañolero de turno.",
-        "Firmar la planilla de préstamo.",
-        "Verificar el estado antes y después del uso.",
-        "Devolver limpio y en su estuche.",
-        "Reportar cualquier daño detectado."
-      ],
-      pdf: "pdfs/protocolo-instrumental.pdf"
-    }
-    // ➕ Agregar nuevos protocolos aquí, un objeto por línea/bloque.
-  ];
+      const $ = (sel, root = document) => root.querySelector(sel);
+      const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
-  /* ==============================================================
-     2) CONFIGURACIÓN VISUAL DE URGENCIAS
-     ============================================================== */
-  const URGENCIA_UI = {
-    critico: { label: "CRÍTICO", cls: "bg-red-500/15 text-red-400 border-red-500/40" },
-    alto:    { label: "ALTO",    cls: "bg-orange-500/15 text-orange-400 border-orange-500/40" },
-    medio:   { label: "MEDIO",   cls: "bg-yellow-500/15 text-yellow-300 border-yellow-500/40" },
-    bajo:    { label: "BAJO",    cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/40" }
-  };
+      /* ==============================================================
+         2) UTILIDADES (motor nuevo)
+         ============================================================== */
 
-  /* ==============================================================
-     3) UTILIDADES
-     ============================================================== */
+      // Normaliza: minúsculas + sin tildes. "Eléctrica" -> "electrica"
+      const normalizar = (s) =>
+        (s ?? "").toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-  // Normaliza texto: minúsculas + sin tildes/diacríticos.
-  // "Eléctrica" -> "electrica". Base de la búsqueda tolerante.
-  const normalizar = (str) =>
-    str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      // Escapa HTML para prevenir inyección desde los datos
+      const escaparHTML = (str) =>
+        String(str).replace(/[&<>"']/g, (c) =>
+          ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-  // Escapa HTML para prevenir inyección desde los datos.
-  const escaparHTML = (str) =>
-    str.replace(/[&<>"']/g, (c) =>
-      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+      // Debounce liviano: evita re-render en cada tecla (netbooks)
+      const debounce = (fn, ms = 120) => {
+        let t;
+        return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+      };
 
-  // Debounce liviano: evita re-render en cada tecla en equipos lentos.
-  const debounce = (fn, ms = 120) => {
-    let t;
-    return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
-  };
+      /* --------------------------------------------------------------
+         Pre-indexado: UNA sola vez al cargar. Cada protocolo obtiene
+         `_indice` con todo su texto normalizado. El filtrado luego es
+         O(n) sobre strings ya procesados → ultra rápido.
+         -------------------------------------------------------------- */
+      protocols.forEach(p => {
+        p._indice = normalizar([
+          p.title, p.category, p.tags.join(" "),
+          p.summary, (p.steps || []).join(" "), p.content
+        ].join(" "));
+      });
 
-  /* --------------------------------------------------------------
-     Pre-indexado: se calcula UNA sola vez al cargar la página.
-     Cada protocolo obtiene un campo `_indice` con todo su texto
-     normalizado (título + resumen + categoría + pasos), lo que hace
-     el filtrado O(n) sobre strings ya procesados → ultra rápido.
-     -------------------------------------------------------------- */
-  PROTOCOLOS.forEach(p => {
-    p._indice = normalizar([p.titulo, p.resumen, p.categoria, ...p.pasos].join(" "));
-  });
+      /* ==============================================================
+         3) ESTADO DE UI
+         ============================================================== */
+      const grid = $("#grid");
+      const q = $("#q");
+      const resultsMeta = $("#resultsMeta");
+      const sortLabel = $("#sortLabel");
+      const toggleUrgency = $("#toggleUrgency");
+      const chips = $$(".chip[data-filter]");
 
-  /* ==============================================================
-     4) RENDERIZADO DE TARJETAS
-     ============================================================== */
-  const grid       = document.getElementById("cardsGrid");
-  const emptyState = document.getElementById("emptyState");
-  const emptyQuery = document.getElementById("emptyQuery");
-  const countEl    = document.getElementById("resultCount");
-  const input      = document.getElementById("searchInput");
+      let activeCategory = "__all__";
+      let sortMode = "relevance"; // 'relevance' | 'urgency'
 
-  function renderTarjetas(lista) {
-    // Se construye todo el HTML en un string y se inyecta UNA vez
-    // (mínimas operaciones sobre el DOM = fluidez en netbooks).
-    grid.innerHTML = lista.map((p, i) => {
-      const u = URGENCIA_UI[p.urgencia] || URGENCIA_UI.bajo;
-      return `
-      <article class="card-enter bg-panel border border-border rounded-2xl shadow-card p-5 flex flex-col
-                      hover:border-accent/50 hover:shadow-glow transition duration-200"
-               style="animation-delay:${i * 30}ms">
-        <!-- Categoría + urgencia -->
-        <div class="flex items-center justify-between mb-3">
-          <span class="text-[11px] font-bold uppercase tracking-widest text-accent">${escaparHTML(p.categoria)}</span>
-          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border ${u.cls}">${u.label}</span>
-        </div>
+      function urgencyRank(u){
+        switch(u){
+          case "Crítica": return 3;
+          case "Alta": return 2;
+          case "Media": return 1;
+          default: return 0;
+        }
+      }
 
-        <!-- Título y resumen -->
-        <h3 class="text-base font-bold text-white mb-1 leading-snug">${escaparHTML(p.titulo)}</h3>
-        <p class="text-xs text-slate-400 mb-4">${escaparHTML(p.resumen)}</p>
+      function urgencyColor(level){
+        switch(level){
+          case "bad":  return { bg:"rgba(251,113,133,.10)", bd:"rgba(251,113,133,.35)", dot:"rgba(251,113,133,.65)" };
+          case "warn": return { bg:"rgba(251,191,36,.10)",  bd:"rgba(251,191,36,.35)",  dot:"rgba(251,191,36,.65)" };
+          case "good": return { bg:"rgba(52,211,153,.10)",  bd:"rgba(52,211,153,.35)",  dot:"rgba(52,211,153,.65)" };
+          default:     return { bg:"rgba(96,165,250,.10)",  bd:"rgba(96,165,250,.35)",  dot:"rgba(96,165,250,.65)" };
+        }
+      }
 
-        <!-- Pasos clave -->
-        <ol class="text-xs text-slate-300 space-y-1.5 mb-5 flex-1">
-          ${p.pasos.map((paso, n) => `
-            <li class="flex gap-2">
-              <span class="shrink-0 w-4 h-4 rounded-full bg-accent/15 text-accent text-[10px]
-                           font-bold flex items-center justify-center mt-px">${n + 1}</span>
-              <span>${escaparHTML(paso)}</span>
-            </li>`).join("")}
-        </ol>
+      /* ==============================================================
+         4) RELEVANCIA (ponderación por campo, sobre texto normalizado)
+         ============================================================== */
+      function computeRelevance(p, tokens, nQuery){
+        if(tokens.length === 0) return 1;
 
-        <!-- Enlace al PDF del repositorio -->
-        <a href="${escaparHTML(p.pdf)}" target="_blank" rel="noopener"
-           class="mt-auto text-center bg-accent/10 border border-accent/40 text-accent text-xs
-                  font-bold py-2.5 rounded-lg hover:bg-accent/20 transition">
-          📄 Abrir protocolo completo (PDF)
-        </a>
-      </article>`;
-    }).join("");
+        const title = normalizar(p.title);
+        const cat = normalizar(p.category);
+        const tags = normalizar(p.tags.join(" "));
+        const summary = normalizar(p.summary);
+        const steps = normalizar((p.steps || []).join(" "));
+        const content = normalizar(p.content);
 
-    // Estado vacío + contador de resultados
-    const hay = lista.length > 0;
-    grid.classList.toggle("hidden", !hay);
-    emptyState.classList.toggle("hidden", hay);
-    countEl.textContent = hay ? `${lista.length} de ${PROTOCOLOS.length}` : "";
-  }
+        let score = 0;
+        for(const t of tokens){
+          if(title.includes(t)) score += 6;
+          if(cat.includes(t)) score += 4;
+          if(tags.includes(t)) score += 5;
+          if(summary.includes(t)) score += 3;
+          if(steps.includes(t)) score += 2;
+          if(content.includes(t)) score += 1;
+        }
+        // Bonus por coincidencia de frase completa
+        if(title.includes(nQuery)) score += 5;
+        if(tags.includes(nQuery)) score += 3;
+        if(p._indice.includes(nQuery)) score += 2;
 
-  /* ==============================================================
-     5) MOTOR DE BÚSQUEDA
-     --------------------------------------------------------------
-     Soporta múltiples palabras: "quimico derrame" exige que TODOS
-     los términos aparezcan en el índice del protocolo (lógica AND).
-     ============================================================== */
-  function filtrar() {
-    const q = normalizar(input.value.trim());
-    if (!q) { renderTarjetas(PROTOCOLOS); return; }
+        return score;
+      }
 
-    const terminos  = q.split(/\s+/);
-    const resultado = PROTOCOLOS.filter(p => terminos.every(t => p._indice.includes(t)));
+      /* ==============================================================
+         5) RENDERIZADO (una sola inyección al DOM + delegación)
+         ============================================================== */
+      function cardHTML(p){
+        const u = urgencyColor(p.urgencyLevel);
+        const previewSteps = (p.steps || []).slice(0, 3);
+        return `
+          <article class="card" data-id="${escaparHTML(p.id)}">
+            <div class="cardTop">
+              <div class="titleWrap">
+                <h3 class="cardTitle">
+                  <span aria-hidden="true">📘</span>
+                  ${escaparHTML(p.title)}
+                </h3>
+                <div class="badge" title="Categoría">
+                  <span class="pill" aria-hidden="true" style="background: rgba(110,231,255,.55); border-color: rgba(110,231,255,.35)"></span>
+                  ${escaparHTML(p.category)}
+                </div>
+              </div>
+              <div class="urgency">
+                <div class="level" style="background:${u.bg}; border-color:${u.bd};">
+                  <span class="sig" aria-hidden="true" style="background:${u.dot}; border-color:${u.bd}"></span>
+                  Urgencia: ${escaparHTML(p.urgency)}
+                </div>
+              </div>
+            </div>
 
-    emptyQuery.textContent = `"${input.value.trim()}"`;
-    renderTarjetas(resultado);
-  }
+            <p class="summary">${escaparHTML(p.summary)}</p>
 
-  input.addEventListener("input", debounce(filtrar, 120));
+            <div class="tags" aria-label="Etiquetas">
+              ${p.tags.slice(0,6).map(t => `<span class="tag">#${escaparHTML(t)}</span>`).join("")}
+            </div>
 
-  document.getElementById("clearBtn").addEventListener("click", () => {
-    input.value = "";
-    filtrar();
-    input.focus();
-  });
+            <ol class="stepsPreview" aria-label="Resumen de pasos">
+              ${previewSteps.map(s => `<li>${escaparHTML(s)}</li>`).join("")}
+            </ol>
 
-  /* ==============================================================
-     6) MODAL DE REPORTES / SUGERENCIAS
-     --------------------------------------------------------------
-     Los reportes se guardan en localStorage bajo la clave
-     "reportes_lab". El docente puede leerlos desde la consola:
-       JSON.parse(localStorage.getItem("reportes_lab"))
-     ============================================================== */
-  const modal     = document.getElementById("reportModal");
-  const form      = document.getElementById("reportForm");
-  const reportOk  = document.getElementById("reportOk");
-  const selProto  = document.getElementById("repProto");
+            <div class="cardActions">
+              <div class="actionsLeft">
+                <button class="btn primary" type="button" data-open="${escaparHTML(p.id)}">
+                  <span aria-hidden="true">🔍</span> Leer / editar
+                </button>
+                <button class="btn" type="button" data-copy="${escaparHTML(p.id)}" title="Copiar ID de protocolo">
+                  <span aria-hidden="true">📋</span> Copiar ID
+                </button>
+              </div>
+              <div class="note" style="max-width:280px; text-align:right;">
+                ID: <span style="font-family:var(--mono)">${escaparHTML(p.id)}</span>
+              </div>
+            </div>
+          </article>`;
+      }
 
-  // Poblar el selector con los títulos de los protocolos + opción general
-  PROTOCOLOS.forEach(p => {
-    const opt = document.createElement("option");
-    opt.value = opt.textContent = p.titulo;
-    selProto.appendChild(opt);
-  });
-  const optGral = document.createElement("option");
-  optGral.value = optGral.textContent = "Otro / Sugerencia general";
-  selProto.appendChild(optGral);
+      function renderCards(list){
+        if(list.length === 0){
+          grid.innerHTML = `
+            <div class="empty">
+              <div>
+                <h3>🙈 No se encontraron resultados</h3>
+                <p>
+                  Prueba con otra palabra clave (ej: <span style="font-family:var(--mono)">derrame</span>,
+                  <span style="font-family:var(--mono)">microscopio</span> o una etiqueta).
+                </p>
+              </div>
+              <button class="btn" type="button" id="clearSearchBtn">
+                <span aria-hidden="true">↩️</span> Limpiar búsqueda
+              </button>
+            </div>`;
+          return;
+        }
+        // Todo el HTML se construye en un string y se inyecta UNA vez
+        grid.innerHTML = list.map(cardHTML).join("");
+      }
 
-  function abrirModal() {
-    form.classList.remove("hidden");
-    reportOk.classList.add("hidden");
-    form.reset();
-    modal.classList.remove("hidden");
-    document.body.style.overflow = "hidden";
-  }
-  function cerrarModal() {
-    modal.classList.add("hidden");
-    document.body.style.overflow = "";
-  }
+      // Delegación de eventos: un solo listener para todas las tarjetas
+      grid.addEventListener("click", async (e) => {
+        const openBtn = e.target.closest("[data-open]");
+        if(openBtn){ openModal(openBtn.getAttribute("data-open")); return; }
 
-  document.getElementById("openReport").addEventListener("click", abrirModal);
-  document.getElementById("closeReport").addEventListener("click", cerrarModal);
-  document.getElementById("modalBackdrop").addEventListener("click", cerrarModal);
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && !modal.classList.contains("hidden")) cerrarModal();
-  });
+        const copyBtn = e.target.closest("[data-copy]");
+        if(copyBtn){
+          const id = copyBtn.getAttribute("data-copy");
+          try{
+            await navigator.clipboard.writeText(id);
+            toast(`✅ ID copiado: ${id}`);
+          }catch{
+            toast("⚠️ No se pudo copiar (permiso del navegador).");
+          }
+          return;
+        }
 
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
+        if(e.target.closest("#clearSearchBtn")){
+          q.value = "";
+          activeCategory = "__all__";
+          syncChips();
+          applyFilters();
+          q.focus();
+        }
+      });
 
-    // Persistencia local del reporte (sin backend, apto GitHub Pages)
-    const reporte = {
-      protocolo: selProto.value,
-      alumno:    document.getElementById("repName").value.trim(),
-      mensaje:   document.getElementById("repMsg").value.trim(),
-      fecha:     new Date().toISOString()
-    };
-    try {
-      const clave = "reportes_lab";
-      const lista = JSON.parse(localStorage.getItem(clave) || "[]");
-      lista.push(reporte);
-      localStorage.setItem(clave, JSON.stringify(lista));
-    } catch (_) { /* localStorage deshabilitado: se ignora sin romper la UI */ }
+      /* ==============================================================
+         6) MODAL (lectura + reporte, persistencia en localStorage)
+         ============================================================== */
+      const modalOverlay = $("#modalOverlay");
+      const closeModal = $("#closeModal");
+      const modalTitle = $("#modalTitle");
+      const modalMeta = $("#modalMeta");
+      const modalSteps = $("#modalSteps");
+      const modalReport = $("#modalReport");
+      const saveReportBtn = $("#saveReportBtn");
+      const clearReportBtn = $("#clearReportBtn");
+      const modalSavedMeta = $("#modalSavedMeta");
 
-    // Feedback visual y cierre automático
-    form.classList.add("hidden");
-    reportOk.classList.remove("hidden");
-    setTimeout(cerrarModal, 1800);
-  });
+      const REPORT_KEY = "lab_protocol_reports_v1";
+      let modalProtocolId = null;
 
-  /* ==============================================================
-     7) ARRANQUE
-     ============================================================== */
-  renderTarjetas(PROTOCOLOS);
+      const getProtocolById = (id) => protocols.find(p => p.id === id);
+
+      function loadSavedReport(id){
+        try{
+          const data = JSON.parse(localStorage.getItem(REPORT_KEY) || "{}");
+          return data?.[id] ?? "";
+        }catch{ return ""; }
+      }
+
+      function saveSavedReport(id, text){
+        try{
+          const data = JSON.parse(localStorage.getItem(REPORT_KEY) || "{}");
+          data[id] = text;
+          localStorage.setItem(REPORT_KEY, JSON.stringify(data));
+        }catch(_){ /* localStorage deshabilitado: no rompe la UI */ }
+      }
+
+      function openModal(id){
+        const p = getProtocolById(id);
+        if(!p) return;
+        modalProtocolId = id;
+
+        modalTitle.textContent = p.title;
+        modalMeta.innerHTML = `
+          <span class="badge" style="background:rgba(255,255,255,.04);">
+            <span class="pill" aria-hidden="true" style="background:rgba(110,231,255,.55); border-color:rgba(110,231,255,.35)"></span>
+            ${escaparHTML(p.category)}
+          </span>
+          <span class="badge">
+            <span class="pill" aria-hidden="true" style="background:rgba(251,191,36,.55); border-color:rgba(251,191,36,.35)"></span>
+            Urgencia: ${escaparHTML(p.urgency)}
+          </span>
+          <span class="badge"><span class="pill" aria-hidden="true" style="background:rgba(167,139,250,.55); border-color:rgba(167,139,250,.35)"></span>
+            ID: <span style="font-family:var(--mono)">${escaparHTML(p.id)}</span>
+          </span>`;
+
+        modalSteps.innerHTML = (p.steps || []).map(s => `<li>${escaparHTML(s)}</li>`).join("");
+
+        modalReport.value = loadSavedReport(id);
+        modalSavedMeta.textContent = modalReport.value
+          ? "🟢 Ya tenías un reporte guardado localmente para este protocolo."
+          : "—";
+
+        modalOverlay.setAttribute("aria-hidden", "false");
+        modalReport.focus();
+      }
+
+      function closeModalFn(){
+        modalOverlay.setAttribute("aria-hidden", "true");
+        modalProtocolId = null;
+      }
+
+      closeModal.addEventListener("click", closeModalFn);
+      modalOverlay.addEventListener("click", (e) => { if(e.target === modalOverlay) closeModalFn(); });
+      document.addEventListener("keydown", (e) => {
+        if(e.key === "Escape" && modalOverlay.getAttribute("aria-hidden") === "false") closeModalFn();
+      });
+
+      saveReportBtn.addEventListener("click", () => {
+        if(!modalProtocolId) return;
+        const p = getProtocolById(modalProtocolId);
+        const text = (modalReport.value || "").trim();
+        if(text.length < 5){
+          modalSavedMeta.textContent = "⚠️ Escribe un poco más (mínimo ~5 caracteres).";
+          return;
+        }
+        saveSavedReport(modalProtocolId, text);
+        modalSavedMeta.textContent = `✅ Reporte guardado (demo) para: ${p.id}`;
+        toast("📝 Reporte enviado (demo) ✅");
+      });
+
+      clearReportBtn.addEventListener("click", () => {
+        modalReport.value = "";
+        modalSavedMeta.textContent = "—";
+        modalReport.focus();
+      });
+
+      /* ==============================================================
+         7) MOTOR DE BÚSQUEDA + FILTROS
+         Multi-palabra con lógica AND sobre el índice pre-calculado:
+         "quimico derrame" exige que TODOS los términos aparezcan.
+         ============================================================== */
+      function syncChips(){
+        for(const chip of chips){
+          chip.setAttribute("aria-pressed", chip.dataset.filter === activeCategory ? "true" : "false");
+        }
+      }
+
+      function applyFilters(){
+        const query = q.value.trim();
+        const nQuery = normalizar(query);
+        const tokens = nQuery.split(/\s+/).filter(Boolean);
+
+        const list = protocols
+          .filter(p => {
+            const categoryOk = (activeCategory === "__all__")
+              || (p.category === activeCategory)
+              || p.tags.includes(normalizar(activeCategory));
+            if(!categoryOk) return false;
+            if(tokens.length === 0) return true;
+            // AND: todos los términos deben estar en el índice pre-calculado
+            return tokens.every(t => p._indice.includes(t));
+          })
+          .map(p => ({ p, score: computeRelevance(p, tokens, nQuery) }));
+
+        if(sortMode === "relevance"){
+          list.sort((a,b) => (b.score - a.score)
+            || (urgencyRank(b.p.urgency) - urgencyRank(a.p.urgency))
+            || a.p.id.localeCompare(b.p.id));
+        }else{
+          list.sort((a,b) => (urgencyRank(b.p.urgency) - urgencyRank(a.p.urgency))
+            || (b.score - a.score)
+            || a.p.id.localeCompare(b.p.id));
+        }
+
+        const resultList = list.map(x => x.p);
+
+        const countText = `${resultList.length} protocolo${resultList.length === 1 ? "" : "s"}`;
+        const categoryText = activeCategory === "__all__" ? "todas las categorías" : `categoría: ${activeCategory}`;
+        const queryText = query ? `· búsqueda: “${query}”` : "· sin búsqueda";
+        resultsMeta.textContent = `${countText} · ${categoryText} ${queryText}`;
+
+        renderCards(resultList);
+      }
+
+      for(const chip of chips){
+        chip.addEventListener("click", () => {
+          activeCategory = chip.dataset.filter;
+          syncChips();
+          applyFilters();
+          q.focus();
+        });
+      }
+
+      // Debounce: no re-renderiza en cada tecla
+      q.addEventListener("input", debounce(applyFilters, 120));
+
+      toggleUrgency.addEventListener("click", () => {
+        sortMode = (sortMode === "relevance") ? "urgency" : "relevance";
+        sortLabel.textContent = (sortMode === "relevance") ? "Relevancia" : "Urgencia";
+        applyFilters();
+      });
+
+      // Atajo: "/" enfoca la búsqueda
+      document.addEventListener("keydown", (e) => {
+        if(["INPUT","TEXTAREA"].includes(document.activeElement?.tagName)) return;
+        if(e.key === "/"){ e.preventDefault(); q.focus(); }
+      });
+
+      /* ==============================================================
+         8) ACCIONES FLOTANTES + TOAST
+         ============================================================== */
+      $("#jumpToFirst").addEventListener("click", () => {
+        const firstBtn = grid.querySelector("button[data-open]");
+        if(firstBtn) openModal(firstBtn.getAttribute("data-open"));
+        else toast("⚠️ No hay resultados para abrir.");
+      });
+
+      $("#openHelpModal").addEventListener("click", () => {
+        toast("💡 Tip: busca por palabras (ej. “derrame”), usa chips por categoría y abre “Leer / editar” para reportar (demo).");
+      });
+
+      const toastEl = document.createElement("div");
+      toastEl.setAttribute("aria-live","polite");
+      toastEl.style.cssText = `
+        position: fixed; left: 50%; transform: translateX(-50%);
+        bottom: 18px; z-index: 80;
+        max-width: min(720px, 92vw);
+        background: rgba(12,18,35,.80);
+        border: 1px solid rgba(255,255,255,.18);
+        color: rgba(234,240,255,.95);
+        padding: 10px 12px; border-radius: 14px;
+        box-shadow: 0 18px 55px rgba(0,0,0,.45);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        display:none; font-size: 13px;`;
+      document.body.appendChild(toastEl);
+
+      let toastT = null;
+      function toast(msg){
+        toastEl.textContent = msg;
+        toastEl.style.display = "block";
+        clearTimeout(toastT);
+        toastT = setTimeout(() => { toastEl.style.display = "none"; }, 2400);
+      }
+
+      /* ==============================================================
+         9) ARRANQUE
+         ============================================================== */
+      syncChips();
+      applyFilters();
+    })();
   </script>
-</body>
+
+  <script>
+    // ============================================================
+    // (Opcional) Listado de archivos del repositorio vía API GitHub
+    // Reemplaza con tu usuario y nombre de repositorio
+    // ============================================================
+    const REPO_OWNER = "miqueas80";
+    const REPO_NAME = "laboratorio-escolar-tecnico";
+
+    async function cargarArchivosDesdeGitHub() {
+      try {
+        const response = await fetch(`[api.github.com](https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/)`);
+        const items = await response.json();
+        const archivos = items.filter(item => item.type === "file" && item.name !== "index.html" && item.name !== "datos.js");
+        console.log("Archivos encontrados en el repositorio:", archivos);
+      } catch (error) {
+        console.error("Error al cargar los archivos:", error);
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", cargarArchivosDesdeGitHub);
+  </script>
+ </body>
 </html>
