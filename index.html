@@ -74,8 +74,8 @@
     .btn-action:hover { box-shadow:0 0 15px var(--accent-glow); transform:translateY(-1px); }
     .btn-action:disabled { opacity:0.4; cursor:not-allowed; transform:none; box-shadow:none; }
 
-    #pdfViewerModal { display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(1,3,8,0.95); z-index:2000; backdrop-filter:blur(10px); flex-direction:column; padding:20px; }
-    .viewer-top { display:flex; justify-content:space-between; align-items:center; background:var(--panel); border:1px solid var(--stroke); padding:12px 20px; border-radius:8px 8px 0 0; flex-wrap:wrap; gap:10px;}
+    #pdfViewerModal { display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(1,3,8,0.95); z-index:2000; backdrop-filter:blur(10px); flex-direction:column; padding:10px; }
+    .viewer-top { display:flex; justify-content:space-between; align-items:center; background:var(--panel); border:1px solid var(--stroke); padding:10px 16px; border-radius:8px 8px 0 0; flex-wrap:wrap; gap:10px;}
     .viewer-title-text { color:var(--accent); font-size:12px; font-weight:bold; }
     
     .viewer-nav-controls { display:flex; align-items:center; gap:8px; }
@@ -85,17 +85,35 @@
 
     .viewer-close { background:var(--danger); color:#fff; border:none; padding:6px 12px; border-radius:4px; font-weight:bold; cursor:pointer; font-size:11px; }
     
-    .viewer-body { flex:1; display:grid; grid-template-columns: 1fr 380px; background:#040812; border:1px solid var(--stroke); border-top:none; border-radius:0 0 8px 8px; overflow:hidden; }
+    /* MODIFICACIÓN: Ajuste de columnas para darle prioridad total al visor del PDF */
+    .viewer-body { flex:1; display:grid; grid-template-columns: 1fr 310px; background:#040812; border:1px solid var(--stroke); border-top:none; border-radius:0 0 8px 8px; overflow:hidden; }
     @media(max-width:900px){ .viewer-body { display:flex; flex-direction:column; } }
     
-    .canvas-container { overflow:auto; display:flex; flex-direction:column; align-items:center; padding:20px; background:rgba(0,0,0,0.3); }
-    canvas { max-width:100%; box-shadow:0 0 30px rgba(0,0,0,0.9); background:white; }
+    /* MODIFICACIÓN: Eliminados los márgenes negros del contenedor del PDF */
+    .canvas-container { overflow:auto; display:flex; justify-content:center; align-items:flex-start; padding:4px; background:#000; width:100%; height:100%; }
+    canvas { width:100% !important; height:auto !important; max-width:100%; box-shadow:0 0 15px rgba(0,0,0,0.8); background:white; display:block; }
     
-    .viewer-sidebar-chat { background:rgba(3,7,14,0.98); border-left:1px solid var(--stroke); display:flex; flex-direction:column; padding:14px; gap:10px; }
-    .v-chat-history { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:10px; font-size:11px; }
+    .viewer-sidebar-chat { background:rgba(3,7,14,0.98); border-left:1px solid var(--stroke); display:flex; flex-direction:column; padding:12px; gap:8px; position:relative; }
+    .v-chat-history { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:10px; font-size:11px; scroll-behavior:smooth; }
+    
+    /* Scrollbar personalizada para fácil visibilidad */
+    .v-chat-history::-webkit-scrollbar { width: 6px; }
+    .v-chat-history::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
+    .v-chat-history::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 4px; }
+
     .v-msg { padding:10px 12px; border-radius:6px; line-height:1.5; white-space:pre-line; }
     .v-msg.bot { background:rgba(0,242,254,0.05); border:1px solid rgba(0,242,254,0.2); color:#cbd5e1; }
     .v-msg.user { background:rgba(79,172,254,0.1); border:1px solid rgba(79,172,254,0.3); color:#fff; align-self:flex-end; }
+    
+    /* Botón flotante para bajar rápido en la conversación */
+    .scroll-down-btn {
+      position: absolute; bottom: 50px; right: 20px; background: var(--accent); color: #000;
+      border: none; width: 28px; height: 28px; border-radius: 50%; font-weight: bold;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 10px var(--accent-glow); z-index: 10; opacity: 0.8; transition: opacity 0.2s;
+    }
+    .scroll-down-btn:hover { opacity: 1; transform: scale(1.1); }
+
     .v-input-row { display:flex; gap:6px; }
     .v-input-row input { flex:1; background:rgba(0,0,0,0.6); border:1px solid var(--stroke); border-radius:4px; padding:8px; color:var(--text); font-family:var(--mono); font-size:11px; outline:none; }
     .v-send { background:var(--accent); color:#000; border:none; padding:8px 12px; border-radius:4px; font-weight:bold; cursor:pointer; font-size:11px; }
@@ -147,6 +165,7 @@
         <div class="v-chat-history" id="modalChatHistory">
           <div class="v-msg bot">Documento cargado. Preguntale a Gemini para encontrar páginas exactas o conceptos específicos.</div>
         </div>
+        <button class="scroll-down-btn" id="scrollToBottomBtn" title="Bajar al final">▼</button>
         <div class="v-input-row">
           <input id="modalQueryInput" type="text" placeholder="Preguntale a Gemini sobre este manual..." autocomplete="off">
           <button class="v-send" id="modalSendBtn">PREGUNTAR</button>
@@ -268,7 +287,7 @@
         
         $('#modalDocTitle').textContent = `📄 ${fileName}`;
         $('#pdfViewerModal').style.display = 'flex';
-        $('#modalChatHistory').innerHTML = `<div class="v-msg bot">Manual "${fileName}" cargado. Consultame con Gemini para buscar páginas exactas de este documento.</div>`;
+        $('#modalChatHistory').innerHTML = `<div class="v-msg bot">Manual "${fileName}" cargado. Consultame para buscar páginas exactas de este documento.</div>`;
 
         try {
           const url = `https://raw.githubusercontent.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/${GITHUB_CONFIG.branch}/${encodeURIComponent(fileName)}`;
@@ -280,6 +299,7 @@
         }
       }
 
+      /* MODIFICACIÓN: Renderizado optimizado para que el PDF ocupe el 100% del contenedor sin franjas negras */
       async function renderCurrentPage() {
         if (!activePdfDoc || isRenderingPage) return;
         isRenderingPage = true;
@@ -291,7 +311,13 @@
           const page = await activePdfDoc.getPage(activePageNum);
           const canvas = $('#pdfCanvas');
           const ctx = canvas.getContext('2d');
-          const vp = page.getViewport({ scale: 1.1 });
+          
+          const container = document.querySelector('.canvas-container');
+          const unscaledVP = page.getViewport({ scale: 1.0 });
+          const targetWidth = container.clientWidth || 800;
+          const dynamicScale = Math.max(1.2, targetWidth / unscaledVP.width);
+
+          const vp = page.getViewport({ scale: dynamicScale });
           canvas.height = vp.height;
           canvas.width = vp.width;
           await page.render({ canvasContext: ctx, viewport: vp }).promise;
@@ -302,6 +328,7 @@
         }
       }
 
+      /* MODIFICACIÓN: Instrucciones mejoradas para lenguaje natural y sin sintaxis LaTeX */
       async function handleModalAIQuery() {
         const val = $('#modalQueryInput').value.trim();
         if(!val) return;
@@ -316,7 +343,7 @@
 
         const bDiv = document.createElement('div');
         bDiv.className = 'v-msg bot';
-        bDiv.textContent = "Analizando el manual...";
+        bDiv.textContent = "Buscando en el manual...";
         hist.appendChild(bDiv);
         hist.scrollTop = hist.scrollHeight;
 
@@ -347,7 +374,13 @@
             contextText = `Fragmento de la página actual (${activePageNum}):\n` + activePagesCache.slice(Math.max(0, pIdx-1), Math.min(activePagesCache.length, pIdx+2)).join("\n\n");
           }
 
-          const prompt = `Sos un asistente técnico experto y preciso. Ayuda al usuario respondiendo a su consulta basándote en este contenido del manual "${activeFileName}", e Indícale explícitamente en qué página exacta se encuentra:\n\n${contextText.substring(0, 12000)}\n\nConsulta del usuario: ${val}`;
+          const prompt = `Sos un compañero y tutor técnico amigable, claro y directo. Explicá la respuesta en español de forma totalmente natural, accesible y sin hablar como robot. NO uses formato LaTeX ni símbolos $ ni nada de código raro. Escribí las fórmulas de forma simple (ejemplo: H2O, SO2, etc.).
+
+Basate en este contenido del manual "${activeFileName}" e indicá claramente en qué número de página exacta se encuentra la información:
+
+${contextText.substring(0, 12000)}
+
+Consulta del estudiante: ${val}`;
           
           const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${key}`, {
             method: 'POST',
@@ -366,14 +399,19 @@
 
           const data = await response.json();
           const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-          const rawText = text || "No se pudo obtener una respuesta clara.";
+          const rawText = text || "No pude encontrar una respuesta clara sobre eso.";
           
-          bDiv.innerHTML = rawText
+          // Limpieza extra de etiquetas o caracteres tipo LaTeX si el modelo intenta usarlos
+          let cleanText = rawText
+            .replace(/\$\\text\{([^}]+)\}_?\{?([^}]*)\}?\$?/g, '$1$2')
+            .replace(/\$+/g, '')
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/\n/g, '<br>');
+
+          bDiv.innerHTML = cleanText;
         } catch(err) {
           console.error(err);
-          bDiv.textContent = `Error de comunicación con la API: ${err.message}`;
+          bDiv.textContent = `Error al consultar: ${err.message}`;
         }
         hist.scrollTop = hist.scrollHeight;
       }
@@ -442,6 +480,18 @@
       $('#nextPageBtn').addEventListener('click', () => {
         if (activePdfDoc && activePageNum < activePdfDoc.numPages) {
           activePageNum++;
+          renderCurrentPage();
+        }
+      });
+
+      // Evento para el botón flotante de scroll abajo
+      $('#scrollToBottomBtn').addEventListener('click', () => {
+        const hist = $('#modalChatHistory');
+        hist.scrollTop = hist.scrollHeight;
+      });
+
+      window.addEventListener('resize', () => {
+        if ($('#pdfViewerModal').style.display === 'flex') {
           renderCurrentPage();
         }
       });
