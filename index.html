@@ -3,7 +3,7 @@
  <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>NEXUS-X // GEMINI CORE</title>
+  <title>NEXUS-X // QUANTUM CORE v4.2</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
     if (window.pdfjsLib) {
@@ -12,165 +12,150 @@
   </script>
   <style>
     :root{
-      --bg:#02040a; --panel:rgba(8, 15, 28, 0.85); --stroke:rgba(0, 242, 254, 0.25);
-      --text:#e2e8f0; --muted:#64748b; --accent:#00f2fe; --accent2:#4facfe;
-      --success:#39ff88; --mono:ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+      --bg:#010308; --panel:rgba(5, 10, 20, 0.9); --stroke:rgba(0, 242, 254, 0.2);
+      --text:#f1f5f9; --muted:#64748b; --accent:#00f2fe; --accent-glow:rgba(0,242,254,0.3);
+      --success:#10b981; --danger:#f43f5e; --mono:ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
     }
     *{box-sizing:border-box;}
     body{
       margin:0; font-family:var(--mono); color:var(--text); background:var(--bg);
-      background-image: linear-gradient(rgba(0,242,254,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,242,254,0.03) 1px, transparent 1px);
-      background-size: 30px 30px; min-height:100vh; display:flex; flex-direction:column;
+      background-image: radial-gradient(circle at 50% 0%, #0a192f 0%, #010308 75%);
+      min-height:100vh; display:flex; flex-direction:column; overflow-x:hidden;
     }
     header{
-      padding:16px 24px; border-bottom:1px solid var(--stroke); background:var(--panel);
-      display:flex; justify-content:space-between; align-items:center; backdrop-filter:blur(10px); flex-wrap:wrap; gap:10px;
+      padding:16px 28px; border-bottom:1px solid var(--stroke); background:var(--panel);
+      display:flex; justify-content:space-between; align-items:center; backdrop-filter:blur(12px); flex-wrap:wrap; gap:12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
     }
-    .logo{font-size:14px; font-weight:bold; letter-spacing:2px; color:var(--accent); text-shadow:0 0 10px rgba(0,242,254,0.4);}
-    .header-right { display: flex; align-items: center; gap: 15px; }
-    .status{font-size:11px; color:var(--muted); display:flex; align-items:center; gap:8px;}
-    .pulse{width:6px; height:6px; background:var(--accent); border-radius:50%; box-shadow:0 0 8px var(--accent); animation:blink 1.5s infinite;}
-    @keyframes blink{0%{opacity:1;} 50%{opacity:0.2;} 100%{opacity:1;}}
-
-    .api-config-bar { display: flex; align-items: center; gap: 6px; font-size: 11px; }
-    .api-config-bar input { background: rgba(0,0,0,0.5); border: 1px solid var(--stroke); border-radius: 4px; padding: 4px 8px; color: var(--text); font-family: var(--mono); font-size: 11px; width: 140px; outline: none; }
-    .api-config-bar button { background: rgba(0,242,254,0.1); border: 1px solid var(--accent); color: var(--accent); padding: 4px 8px; border-radius: 4px; cursor: pointer; font-family: var(--mono); font-size: 10px; }
-    .api-config-bar button:hover { background: var(--accent); color: #000; }
-
-    .container{max-width:1000px; width:94vw; margin:24px auto; flex:1; display:flex; flex-direction:column; gap:16px;}
+    .logo{font-size:13px; font-weight:bold; letter-spacing:3px; color:var(--accent); text-shadow:0 0 12px var(--accent-glow); display:flex; align-items:center; gap:8px;}
+    .logo::before{content:''; display:block; width:8px; height:8px; background:var(--accent); border-radius:50%; box-shadow:0 0 10px var(--accent);}
     
-    .chat-box{
-      flex:1; background:var(--panel); border:1px solid var(--stroke); border-radius:12px;
-      padding:20px; overflow-y:auto; max-height:65vh; min-height:420px; display:flex; flex-direction:column; gap:16px;
-      box-shadow:0 10px 30px rgba(0,0,0,0.8);
-    }
-    .msg{padding:14px 18px; border-radius:8px; font-size:13px; line-height:1.6; max-width:88%; white-space: pre-line;}
-    .msg.system{background:rgba(0,242,254,0.04); border:1px solid rgba(0,242,254,0.2); color:var(--accent); align-self:flex-start;}
-    .msg.user{background:rgba(79,172,254,0.1); border:1px solid rgba(79,172,254,0.3); color:#fff; align-self:flex-end;}
-    .msg.ai{background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.1); color:#cbd5e1; align-self:flex-start;}
-    .msg.error{background:rgba(255,85,119,0.05); border:1px solid rgba(255,85,119,0.3); color:#ff9bad; align-self:flex-start;}
+    .header-controls { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .api-config-bar { display: flex; align-items: center; gap: 6px; font-size: 11px; background: rgba(0,0,0,0.4); border: 1px solid var(--stroke); padding: 4px 10px; border-radius: 6px; }
+    .api-config-bar input { background: transparent; border: none; color: var(--text); font-family: var(--mono); font-size: 11px; width: 130px; outline: none; }
+    .api-config-bar button { background: rgba(0,242,254,0.1); border: 1px solid var(--accent); color: var(--accent); padding: 4px 8px; border-radius: 4px; cursor: pointer; font-family: var(--mono); font-size: 10px; font-weight: bold; }
+    .api-config-bar button:hover { background: var(--accent); color: #000; }
+    
+    .status-pill{font-size:11px; color:var(--muted); display:flex; align-items:center; gap:6px; background:rgba(255,255,255,0.02); padding:4px 10px; border-radius:20px; border:1px solid rgba(255,255,255,0.05);}
+    .pulse{width:6px; height:6px; background:var(--success); border-radius:50%; box-shadow:0 0 8px var(--success); animation:blink 2s infinite;}
+    @keyframes blink{0%{opacity:1;} 50%{opacity:0.3;} 100%{opacity:1;}}
+
+    .workspace{max-width:1100px; width:95vw; margin:20px auto; flex:1; display:grid; grid-template-columns: 320px 1fr; gap:20px;}
+    @media(max-width: 850px){ .workspace { display:flex; flex-direction:column; } }
+
+    .sidebar { background:var(--panel); border:1px solid var(--stroke); border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:14px; max-height:75vh; overflow-y:auto; }
+    .sidebar-title { font-size:11px; color:var(--accent); letter-spacing:1px; text-transform:uppercase; border-bottom:1px solid var(--stroke); padding-bottom:6px; }
+    .doc-list { display:flex; flex-direction:column; gap:6px; }
+    .doc-item { padding:10px 12px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:6px; font-size:11px; cursor:pointer; transition:all 0.2s; display:flex; justify-content:space-between; align-items:center; }
+    .doc-item:hover { background:rgba(0,242,254,0.06); border-color:var(--stroke); transform:translateX(2px); }
+
+    .main-panel { background:var(--panel); border:1px solid var(--stroke); border-radius:12px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,0.8); min-height:550px; }
+    
+    .chat-scroll { flex:1; padding:20px; overflow-y:auto; display:flex; flex-direction:column; gap:16px; max-height:60vh; }
+    .msg { padding:14px 16px; border-radius:8px; font-size:13px; line-height:1.6; max-width:88%; word-break:break-word; }
+    .msg.system { background:rgba(0,242,254,0.03); border:1px solid rgba(0,242,254,0.15); color:var(--accent); align-self:flex-start; }
+    .msg.user { background:rgba(79,172,254,0.08); border:1px solid rgba(79,172,254,0.25); color:#fff; align-self:flex-end; }
+    .msg.ai { background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08); color:#cbd5e1; align-self:flex-start; white-space: pre-line; }
+    .msg.error { background:rgba(244,63,94,0.05); border:1px solid rgba(244,63,94,0.2); color:#fda4af; align-self:flex-start; }
 
     .doc-action-card{
-      margin-top:10px; padding:12px; background:rgba(57,255,136,0.03); border:1px solid rgba(57,255,136,0.25);
+      margin-top:10px; padding:12px; background:rgba(16,185,129,0.03); border:1px solid rgba(16,185,129,0.25);
       border-radius:6px; display:flex; flex-direction:column; gap:8px;
     }
     .doc-header-row { display: flex; justify-content: space-between; align-items: center; }
     .doc-action-title{color:var(--success); font-size:11px; font-weight:bold;}
-    .certer-badge { background: rgba(57,255,136,0.15); color: var(--success); padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; }
+    .certer-badge { background: rgba(16,185,129,0.15); color: var(--success); padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; }
     .doc-snippet { font-size: 11px; color: var(--muted); border-left: 2px solid var(--success); padding-left: 8px; margin: 4px 0; background: rgba(0,0,0,0.2); padding: 6px; border-radius: 0 4px 4px 0;}
     
     .actions-row{display:flex; gap:10px; flex-wrap:wrap; margin-top: 6px;}
     .action-btn{
-      display:inline-flex; align-items:center; gap:6px; padding:8px 14px; background:linear-gradient(135deg, var(--accent), var(--accent2));
+      display:inline-flex; align-items:center; gap:6px; padding:8px 14px; background:linear-gradient(135deg, var(--accent), #4facfe);
       color:#000; text-decoration:none; border-radius:6px; font-weight:bold; font-size:11px; cursor:pointer;
-      box-shadow:0 0 10px rgba(0,242,254,0.3); transition:transform 0.1s; border:none;
+      box-shadow:0 0 10px rgba(0,242,254,0.3); transition:transform 0.1s; border:none; font-family:var(--mono);
     }
-    .action-btn.download{background:linear-gradient(135deg, #39ff88, #00b0ff); color:#000;}
+    .action-btn.download{background:linear-gradient(135deg, #10b981, #00b0ff); color:#000;}
     .action-btn:hover{transform:translateY(-1px); box-shadow:0 0 15px rgba(0,242,254,0.6);}
 
-    #pdfViewerModal {
-      display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-      background: rgba(2, 4, 10, 0.92); z-index: 1000; backdrop-filter: blur(8px);
-      flex-direction: column; padding: 15px;
-    }
-    .viewer-header {
-      display: flex; justify-content: space-between; align-items: center;
-      background: var(--panel); border: 1px solid var(--stroke); padding: 10px 20px;
-      border-radius: 8px 8px 0 0; font-size: 13px; color: var(--accent);
-    }
-    .viewer-nav { display: flex; align-items: center; gap: 10px; }
-    .page-btn { background: rgba(0,242,254,0.1); border: 1px solid var(--stroke); color: var(--accent); padding: 4px 10px; border-radius: 4px; cursor: pointer; font-family: var(--mono); font-size: 11px; }
-    .page-btn:hover { background: var(--accent); color: #000; }
+    .input-box-area { padding:16px; background:rgba(0,0,0,0.4); border-top:1px solid var(--stroke); display:flex; gap:10px; align-items:center; }
+    .input-box-area input { flex:1; background:rgba(0,0,0,0.6); border:1px solid var(--stroke); border-radius:6px; padding:12px 14px; color:var(--text); font-family:var(--mono); font-size:13px; outline:none; transition:border 0.2s; }
+    .input-box-area input:focus { border-color:var(--accent); box-shadow:0 0 10px var(--accent-glow); }
+    .btn-action { background:linear-gradient(135deg, var(--accent), #4facfe); color:#000; border:none; padding:12px 20px; border-radius:6px; font-weight:bold; font-family:var(--mono); font-size:12px; cursor:pointer; transition:transform 0.1s, box-shadow 0.2s; }
+    .btn-action:hover { box-shadow:0 0 15px var(--accent-glow); transform:translateY(-1px); }
+    .btn-action:disabled { opacity:0.4; cursor:not-allowed; transform:none; box-shadow:none; }
+
+    #pdfViewerModal { display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(1,3,8,0.95); z-index:2000; backdrop-filter:blur(10px); flex-direction:column; padding:20px; }
+    .viewer-top { display:flex; justify-content:space-between; align-items:center; background:var(--panel); border:1px solid var(--stroke); padding:12px 20px; border-radius:8px 8px 0 0; }
+    .viewer-title-text { color:var(--accent); font-size:12px; font-weight:bold; }
+    .viewer-close { background:var(--danger); color:#fff; border:none; padding:6px 12px; border-radius:4px; font-weight:bold; cursor:pointer; font-size:11px; }
+    .viewer-body { flex:1; display:grid; grid-template-columns: 1fr 380px; background:#040812; border:1px solid var(--stroke); border-top:none; border-radius:0 0 8px 8px; overflow:hidden; }
+    @media(max-width:900px){ .viewer-body { display:flex; flex-direction:column; } }
+    .canvas-container { overflow:auto; display:flex; flex-direction:column; align-items:center; padding:20px; background:rgba(0,0,0,0.3); }
+    canvas { max-width:100%; box-shadow:0 0 30px rgba(0,0,0,0.9); background:white; }
     
-    .close-viewer {
-      background: #ff5577; color: #fff; border: none; padding: 6px 12px;
-      border-radius: 4px; cursor: pointer; font-family: var(--mono); font-weight: bold; font-size: 11px;
-    }
-    .viewer-layout {
-      flex: 1; display: flex; gap: 15px; background: #0b1329; border: 1px solid var(--stroke); border-top: none;
-      border-radius: 0 0 8px 8px; overflow: hidden; padding: 15px;
-    }
-    .viewer-canvas-pane { flex: 2; overflow: auto; display: flex; flex-direction: column; align-items: center; background: rgba(0,0,0,0.3); border-radius: 6px; padding: 10px; }
-    canvas { max-width: 100%; box-shadow: 0 0 20px rgba(0,0,0,0.8); background: white; margin-top: 10px; }
-
-    .viewer-ai-pane {
-      flex: 1; background: rgba(4, 9, 18, 0.95); border: 1px solid var(--stroke); border-radius: 6px;
-      display: flex; flex-direction: column; padding: 12px; gap: 10px; max-width: 400px;
-    }
-    .ai-pane-title { font-size: 11px; color: var(--success); font-weight: bold; border-bottom: 1px solid var(--stroke); padding-bottom: 6px; display: flex; justify-content: space-between; align-items: center;}
-    .ai-chat-history { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; font-size: 11px; padding-right: 4px; }
-    .ai-msg { padding: 10px 12px; border-radius: 6px; line-height: 1.5; white-space: pre-line; }
-    .ai-msg.bot { background: rgba(0,242,254,0.06); border: 1px solid rgba(0,242,254,0.2); color: #cbd5e1; }
-    .ai-msg.user { background: rgba(79,172,254,0.1); border: 1px solid rgba(79,172,254,0.3); color: #fff; align-self: flex-end; }
-    .ai-input-row { display: flex; gap: 6px; }
-    .ai-input-row input { flex: 1; background: rgba(0,0,0,0.5); border: 1px solid var(--stroke); border-radius: 4px; padding: 6px 8px; color: var(--text); font-family: var(--mono); font-size: 11px; outline: none; }
-    .ai-send-btn { background: var(--accent); color: #000; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; font-family: var(--mono); font-size: 11px; cursor: pointer; }
-
-    .input-panel{
-      background:var(--panel); border:1px solid var(--stroke); border-radius:12px; padding:12px;
-      display:flex; gap:12px; align-items:center;
-    }
-    .input-panel input{
-      flex:1; background:transparent; border:none; outline:none; color:var(--text); font-family:var(--mono); font-size:14px;
-    }
-    .btn{
-      background:linear-gradient(135deg, var(--accent), var(--accent2)); color:#000; border:none;
-      padding:10px 20px; border-radius:6px; font-weight:bold; font-family:var(--mono); font-size:12px; cursor:pointer;
-      transition:transform 0.1s, box-shadow 0.2s;
-    }
-    .btn:disabled{opacity:0.5; cursor:not-allowed;}
-    .btn:hover:not(:disabled){box-shadow:0 0 15px rgba(0,242,254,0.5); transform:translateY(-1px);}
+    .viewer-sidebar-chat { background:rgba(3,7,14,0.98); border-left:1px solid var(--stroke); display:flex; flex-direction:column; padding:14px; gap:10px; }
+    .v-chat-history { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:10px; font-size:11px; }
+    .v-msg { padding:10px 12px; border-radius:6px; line-height:1.5; white-space:pre-line; }
+    .v-msg.bot { background:rgba(0,242,254,0.05); border:1px solid rgba(0,242,254,0.2); color:#cbd5e1; }
+    .v-msg.user { background:rgba(79,172,254,0.1); border:1px solid rgba(79,172,254,0.3); color:#fff; align-self:flex-end; }
+    .v-input-row { display:flex; gap:6px; }
+    .v-input-row input { flex:1; background:rgba(0,0,0,0.6); border:1px solid var(--stroke); border-radius:4px; padding:8px; color:var(--text); font-family:var(--mono); font-size:11px; outline:none; }
+    .v-send { background:var(--accent); color:#000; border:none; padding:8px 12px; border-radius:4px; font-weight:bold; cursor:pointer; font-size:11px; }
   </style>
  </head>
  <body>
+
   <header>
-   <div class="logo">NEXUS-X // GEMINI CORE</div>
-   <div class="header-right">
+   <div class="logo">NEXUS-X // QUANTUM CORE</div>
+   <div class="header-controls">
      <div class="api-config-bar">
        <span>API Key:</span>
-       <input id="apiKeyInput" type="password" placeholder="Pegá tu API Key..." autocomplete="off">
+       <input id="apiKeyInput" type="password" placeholder="Pegá tu clave..." autocomplete="off">
        <button id="saveApiKeyBtn">GUARDAR</button>
      </div>
-     <div class="status"><div class="pulse"></div><span id="sysState">Cargando datos...</span></div>
+     <div class="status-pill"><div class="pulse"></div><span id="sysState">Sincronizando...</span></div>
    </div>
   </header>
 
-  <div class="container">
-   <div class="chat-box" id="chatBox">
-    <div class="msg system">>> Sistema listo. Ingresá tu clave arriba a la derecha y escribí un concepto para buscar en los manuales.</div>
-   </div>
+  <div class="workspace">
+    <div class="sidebar">
+      <div class="sidebar-title">📄 Manuales Indexados</div>
+      <div class="doc-list" id="docListContainer">
+        <span style="font-size:11px; color:var(--muted);">Buscando archivos...</span>
+      </div>
+    </div>
 
-   <div class="input-panel">
-    <input id="queryInput" type="text" placeholder="Escribe un concepto (ej: nomenclatura, soldadura, circuitos)..." autocomplete="off" disabled>
-    <button class="btn" id="sendBtn" disabled>CONSULTAR</button>
-   </div>
+    <div class="main-panel">
+      <div class="chat-scroll" id="mainChatBox">
+        <div class="msg system">>> Núcleo listo. Ingresá tu API Key arriba y consultá cualquier concepto técnico.</div>
+      </div>
+
+      <div class="input-box-area">
+        <input id="mainQueryInput" type="text" placeholder="Escribí un concepto (ej: nomenclatura, soldadura)..." autocomplete="off" disabled>
+        <button class="btn-action" id="mainSendBtn" disabled>CONSULTAR</button>
+      </div>
+    </div>
   </div>
 
   <div id="pdfViewerModal">
-    <div class="viewer-header">
-      <span id="viewerTitle">📄 Lector Online & Gemini API</span>
-      <div class="viewer-nav">
-        <button class="page-btn" id="prevPageBtn">◀ Anterior</button>
-        <span id="pageInfo" style="font-size:11px; color:var(--accent);">Pág. 1 / 1</span>
-        <button class="page-btn" id="nextPageBtn">Siguiente ▶</button>
+    <div class="viewer-top">
+      <span class="viewer-title-text" id="modalDocTitle">📄 Lector Activo</span>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span id="pageIndicator" style="font-size:11px; color:var(--accent);">Pág. 1</span>
+        <button class="viewer-close" id="closeModalBtn">CERRAR [X]</button>
       </div>
-      <button class="close-viewer" id="closeViewerBtn">CERRAR [X]</button>
     </div>
-    <div class="viewer-layout">
-      <div class="viewer-canvas-pane">
+    <div class="viewer-body">
+      <div class="canvas-container">
         <canvas id="pdfCanvas"></canvas>
       </div>
-      <div class="viewer-ai-pane">
-        <div class="ai-pane-title">
-          <span>🤖 ASISTENTE GEMINI AI</span>
-          <span style="color:var(--success); font-size:9px;" id="apiStatusBadge">[API LISTA]</span>
+      <div class="viewer-sidebar-chat">
+        <div style="font-size:11px; color:var(--success); font-weight:bold; border-bottom:1px solid var(--stroke); padding-bottom:6px;">🤖 ASISTENTE DIRECTO</div>
+        <div class="v-chat-history" id="modalChatHistory">
+          <div class="v-msg bot">Documento cargado. Preguntame lo que necesites sobre este texto.</div>
         </div>
-        <div class="ai-chat-history" id="aiChatHistory">
-          <div class="ai-msg bot">Manual indexado por páginas. Preguntame lo que necesites sobre este documento.</div>
-        </div>
-        <div class="ai-input-row">
-          <input id="aiQueryInput" type="text" placeholder="Ej: Explicame los puntos clave..." autocomplete="off">
-          <button class="ai-send-btn" id="aiSendBtn">PREGUNTAR</button>
+        <div class="v-input-row">
+          <input id="modalQueryInput" type="text" placeholder="Ej: Explicame los puntos clave..." autocomplete="off">
+          <button class="v-send" id="modalSendBtn">PREGUNTAR</button>
         </div>
       </div>
     </div>
@@ -180,22 +165,15 @@
     (() => {
       'use strict';
 
-      const GITHUB_CONFIG = {
-        owner: "miqueas80",
-        repo: "laboratorio-escolar-tecnico",
-        branch: "main"
-      };
-
-      let GEMINI_API_KEY = localStorage.getItem('nexus_gemini_key') || "";
-      if (GEMINI_API_KEY) {
-        document.getElementById('apiKeyInput').value = GEMINI_API_KEY;
-      }
+      const GITHUB_CONFIG = { owner: "miqueas80", repo: "laboratorio-escolar-tecnico", branch: "main" };
+      let globalApiKey = localStorage.getItem('nexus_gemini_key') || "";
+      if (globalApiKey) document.getElementById('apiKeyInput').value = globalApiKey;
 
       document.getElementById('saveApiKeyBtn').addEventListener('click', () => {
-        const keyVal = document.getElementById('apiKeyInput').value.trim();
-        if(keyVal) {
-          localStorage.setItem('nexus_gemini_key', keyVal);
-          GEMINI_API_KEY = keyVal;
+        const val = document.getElementById('apiKeyInput').value.trim();
+        if(val) {
+          localStorage.setItem('nexus_gemini_key', val);
+          globalApiKey = val;
           alert("¡API Key guardada de forma segura en tu navegador!");
         } else {
           alert("Por favor ingresa una clave válida.");
@@ -203,302 +181,215 @@
       });
 
       let repositoryFiles = [];
-      let parsedParagraphs = {};  
-      let docPagesText = {}; // Almacena el texto separado por páginas para documentos gigantes
-      
+      let repositoryTexts = {}; 
+
       let activePdfDoc = null;
       let activePageNum = 1;
-      let activeTotalPages = 1;
+      let activeFileName = "";
+      let activePagesCache = [];
+      let isRenderingPage = false; // Control de seguridad anti-colisión de canvas
 
       const $ = (s) => document.querySelector(s);
 
-      function appendMessage(text, sender) {
-        const box = $('#chatBox');
+      function addMsg(boxId, text, type) {
+        const box = $(boxId);
         const div = document.createElement('div');
-        div.className = `msg ${sender}`;
+        div.className = `msg ${type}`;
         div.textContent = text;
         box.appendChild(div);
         box.scrollTop = box.scrollHeight;
         return div;
       }
 
-      async function fetchRepositoryFiles() {
+      async function fetchFiles() {
         try {
-          const apiUrl = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/`;
-          const response = await fetch(apiUrl);
-          if (!response.ok) throw new Error("No se pudo conectar con GitHub");
-          
-          const data = await response.json();
-          repositoryFiles = data
-            .filter(item => item.type === 'file' && item.name.toLowerCase().endsWith('.pdf'))
-            .map(item => item.name);
+          const res = await fetch(`https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/`);
+          if (!res.ok) throw new Error("Fallo de conexión");
+          const data = await res.json();
+          repositoryFiles = data.filter(i => i.type === 'file' && i.name.toLowerCase().endsWith('.pdf')).map(i => i.name);
+
+          const listEl = $('#docListContainer');
+          listEl.innerHTML = '';
 
           if (repositoryFiles.length === 0) {
-            appendMessage(">> Atención: No se encontraron archivos PDF en la raíz del repositorio.", "error");
+            listEl.innerHTML = '<span style="font-size:11px; color:var(--danger);">No hay PDFs en el repositorio.</span>';
             return;
           }
 
-          await indexRepository();
+          repositoryFiles.forEach(file => {
+            const item = document.createElement('div');
+            item.className = 'doc-item';
+            item.innerHTML = `<span>📄 ${file}</span> <span style="font-size:9px; color:var(--accent);">ABRIR</span>`;
+            item.addEventListener('click', () => loadPdfInModal(file));
+            listEl.appendChild(item);
+          });
 
+          await indexAllPdfs();
         } catch (e) {
-          console.error("Error al obtener archivos de GitHub:", e);
-          appendMessage(">> Error al sincronizar con GitHub. Verificá tu conexión.", "error");
+          console.error(e);
+          $('#sysState').textContent = "Error de sincronización";
+          addMsg('#mainChatBox', ">> Error al conectar con el repositorio de manuales.", "error");
         }
       }
 
-      async function indexRepository() {
-        for (let fileName of repositoryFiles) {
+      async function indexAllPdfs() {
+        for (let file of repositoryFiles) {
           try {
-            const url = `https://raw.githubusercontent.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/${GITHUB_CONFIG.branch}/${fileName}`;
-            const loadingTask = pdfjsLib.getDocument(url);
-            const pdfDoc = await loadingTask.promise;
-            
-            let paragraphs = [];
+            const url = `https://raw.githubusercontent.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/${GITHUB_CONFIG.branch}/${file}`;
+            const pdf = await pdfjsLib.getDocument(url).promise;
             let pagesArray = [];
-            
-            for (let i = 1; i <= pdfDoc.numPages; i++) {
-              const page = await pdfDoc.getPage(i);
-              const textContent = await page.getTextContent();
-              let pageText = textContent.items.map(item => item.str).join(" ");
-              pagesArray.push(pageText); // Guardamos cada página limpia
-
-              let chunks = pageText.split(/(?:\.|\n)+/).map(c => c.trim()).filter(c => c.length > 20);
-              paragraphs.push(...chunks);
+            for (let i = 1; i <= pdf.numPages; i++) {
+              const page = await pdf.getPage(i);
+              const txt = await page.getTextContent();
+              pagesArray.push(txt.items.map(it => it.str).join(" "));
             }
-
-            parsedParagraphs[fileName] = paragraphs;
-            docPagesText[fileName] = pagesArray;
-          } catch (e) {
-            console.warn(`No se pudo indexar el archivo ${fileName}:`, e);
-            parsedParagraphs[fileName] = [];
-            docPagesText[fileName] = [];
+            repositoryTexts[file] = pagesArray;
+          } catch(err) {
+            console.warn(`No se pudo procesar ${file}:`, err);
+            repositoryTexts[file] = [];
           }
         }
-
         $('#sysState').textContent = "Sistema sincronizado";
-        $('#queryInput').disabled = false;
-        $('#sendBtn').disabled = false;
+        $('#mainQueryInput').disabled = false;
+        $('#mainSendBtn').disabled = false;
       }
 
-      function processSmartQuery(query) {
-        const qLower = query.toLowerCase().trim();
-        const searchWords = qLower.split(/\s+/).filter(w => w.length > 2);
-        if (searchWords.length === 0) return [];
-
-        let results = [];
-
-        for (let fileName of repositoryFiles) {
-          let paragraphs = parsedParagraphs[fileName] || [];
-          let bestParagraph = "";
-          let maxScore = 0;
-
-          paragraphs.forEach(par => {
-            let score = 0;
-            let parLower = par.toLowerCase();
-            searchWords.forEach(word => {
-              if (parLower.includes(word)) {
-                score += (word.length * 2);
-              }
-            });
-            if (score > maxScore) {
-              maxScore = score;
-              bestParagraph = par;
-            }
-          });
-
-          if (fileName.toLowerCase().includes(searchWords[0])) {
-            maxScore += 25;
-          }
-
-          if (maxScore > 0) {
-            let certainty = Math.min(Math.floor(maxScore * 4 + 40), 99);
-            let cleanSnippet = bestParagraph ? `"${bestParagraph.substring(0, 180)}..."` : "Contenido técnico relevante indexado.";
-
-            results.push({
-              fileName: fileName,
-              certainty: certainty,
-              snippet: cleanSnippet,
-              fileUrl: `https://raw.githubusercontent.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/${GITHUB_CONFIG.branch}/${fileName}`
-            });
-          }
-        }
-
-        results.sort((a, b) => b.certainty - a.certainty);
-        return results;
-      }
-
-      function handleQuerySubmission() {
-        const val = $('#queryInput').value.trim();
-        if (!val) return;
-        
-        appendMessage(val, 'user');
-        $('#queryInput').value = '';
-
-        setTimeout(() => {
-          const matches = processSmartQuery(val);
-          if (matches.length === 0) {
-            appendMessage(`>> No se encontró ninguna mención limpia a "${val}" dentro de los documentos.`, 'error');
-            return;
-          }
-
-          const aiMsg = appendMessage(`>> BÚSQUEDA INTELIGENTE COMPLETADA\nConcepto analizado: "${val}"`, 'ai');
-
-          matches.forEach(match => {
-            const card = document.createElement('div');
-            card.className = 'doc-action-card';
-            card.innerHTML = `
-              <div class="doc-header-row">
-                <span class="doc-action-title">📄 ${match.fileName}</span>
-                <span class="certer-badge">Certeza: ${match.certainty}%</span>
-              </div>
-              <div class="doc-snippet">${match.snippet}</div>
-              <div class="actions-row">
-                <button class="action-btn open-online-btn"><span>🌐</span> ABRIR ONLINE</button>
-                <a href="${match.fileUrl}" download="${match.fileName}" class="action-btn download"><span>💾</span> DESCARGAR AL TARRITO (PDF)</a>
-              </div>
-            `;
-            aiMsg.appendChild(card);
-            
-            card.querySelector('.open-online-btn').addEventListener('click', () => {
-              openCloudPDFViewer(match.fileUrl, match.fileName);
-            });
-          });
-
-          const box = $('#chatBox');
-          box.scrollTop = box.scrollHeight;
-          $('#queryInput').focus();
-        }, 150);
-      }
-
-      let currentActiveFileName = "";
-
-      async function openCloudPDFViewer(url, fileName) {
-        currentActiveFileName = fileName;
-        $('#viewerTitle').textContent = `📄 Lector Online & Gemini API - ${fileName}`;
+      async function loadPdfInModal(fileName) {
+        activeFileName = fileName;
+        activePagesCache = repositoryTexts[fileName] || [];
+        $('#modalDocTitle').textContent = `📄 Lector Activo - ${fileName}`;
         $('#pdfViewerModal').style.display = 'flex';
-
-        $('#aiChatHistory').innerHTML = `<div class="ai-msg bot">Manual "${fileName}" cargado. Preguntame lo que necesites y te respondo directo.</div>`;
+        $('#modalChatHistory').innerHTML = `<div class="v-msg bot">Manual "${fileName}" cargado. Preguntame lo que necesites.</div>`;
 
         try {
-          const loadingTask = pdfjsLib.getDocument(url);
-          activePdfDoc = await loadingTask.promise;
-          activeTotalPages = activePdfDoc.numPages;
+          const url = `https://raw.githubusercontent.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/${GITHUB_CONFIG.branch}/${fileName}`;
+          activePdfDoc = await pdfjsLib.getDocument(url).promise;
           activePageNum = 1;
-
-          renderPage(activePageNum);
-        } catch (e) {
-          console.error("Error al cargar el PDF:", e);
-          alert("No se pudo cargar el PDF en el visor.");
+          renderCurrentPage();
+        } catch(e) {
+          alert("No se pudo cargar el visor para este archivo.");
         }
       }
 
-      async function renderPage(num) {
-        if (!activePdfDoc) return;
-        $('#pageInfo').textContent = `Pág. ${num} / ${activeTotalPages}`;
-
-        const page = await activePdfDoc.getPage(num);
-        const canvas = document.getElementById('pdfCanvas');
-        const context = canvas.getContext('2d');
-        const viewport = page.getViewport({ scale: 1.2 });
-
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
-
-        await page.render({ canvasContext: context, viewport: viewport }).promise;
+      async function renderCurrentPage() {
+        if (!activePdfDoc || isRenderingPage) return;
+        isRenderingPage = true;
+        try {
+          $('#pageIndicator').textContent = `Pág. ${activePageNum} / ${activePdfDoc.numPages}`;
+          const page = await activePdfDoc.getPage(activePageNum);
+          const canvas = $('#pdfCanvas');
+          const ctx = canvas.getContext('2d');
+          const vp = page.getViewport({ scale: 1.1 });
+          canvas.height = vp.height;
+          canvas.width = vp.width;
+          await page.render({ canvasContext: ctx, viewport: vp }).promise;
+        } catch (err) {
+          console.error("Error al renderizar página:", err);
+        } finally {
+          isRenderingPage = false;
+        }
       }
 
-      $('#prevPageBtn').addEventListener('click', () => {
-        if (activePageNum <= 1) return;
-        activePageNum--;
-        renderPage(activePageNum);
-      });
+      async function handleModalAIQuery() {
+        const val = $('#modalQueryInput').value.trim();
+        if(!val) return;
 
-      $('#nextPageBtn').addEventListener('click', () => {
-        if (activePageNum >= activeTotalPages) return;
-        activePageNum++;
-        renderPage(activePageNum);
-      });
+        const hist = $('#modalChatHistory');
+        const uDiv = document.createElement('div');
+        uDiv.className = 'v-msg user';
+        uDiv.textContent = val;
+        hist.appendChild(uDiv);
+        $('#modalQueryInput').value = '';
+        hist.scrollTop = hist.scrollHeight;
 
-      async function handleAIQuery() {
-        const val = $('#aiQueryInput').value.trim();
-        if (!val) return;
+        const bDiv = document.createElement('div');
+        bDiv.className = 'v-msg bot';
+        bDiv.textContent = "Pensando...";
+        hist.appendChild(bDiv);
+        hist.scrollTop = hist.scrollHeight;
 
-        const history = $('#aiChatHistory');
-        const userDiv = document.createElement('div');
-        userDiv.className = 'ai-msg user';
-        userDiv.textContent = val;
-        history.appendChild(userDiv);
-        $('#aiQueryInput').value = '';
-        history.scrollTop = history.scrollHeight;
-
-        const botDiv = document.createElement('div');
-        botDiv.className = 'ai-msg bot';
-        botDiv.textContent = "Pensando...";
-        history.appendChild(botDiv);
-        history.scrollTop = history.scrollHeight;
-
-        const activeKey = localStorage.getItem('nexus_gemini_key') || GEMINI_API_KEY;
-        if (!activeKey) {
-          botDiv.textContent = "⚠️ Primero debés ingresar y guardar tu API Key en el campo superior derecho.";
+        const key = localStorage.getItem('nexus_gemini_key') || globalApiKey;
+        if(!key) {
+          bDiv.textContent = "⚠️ Primero debés ingresar y guardar tu API Key en el campo superior derecho.";
           return;
         }
 
         try {
-          // Tomamos inteligentemente el texto de la página que está viendo ahora mismo en el visor
-          let pages = docPagesText[currentActiveFileName] || [];
-          let contextText = "";
-          
-          if (pages.length > 0) {
-            // Si hay páginas, le pasamos la página actual y las dos adyacentes para dar contexto perfecto sin saturar
-            let pIdx = activePageNum - 1;
-            let start = Math.max(0, pIdx - 1);
-            let end = Math.min(pages.length - 1, pIdx + 1);
-            for (let i = start; i <= end; i++) {
-              contextText += `--- PÁGINA ${i+1} ---\n` + pages[i] + "\n\n";
-            }
-          }
+          let pIdx = activePageNum - 1;
+          let snippet = activePagesCache.slice(Math.max(0, pIdx-1), Math.min(activePagesCache.length, pIdx+2)).join("\n\n");
 
-          // Instrucción de sistema humana, directa y conversacional (cero robótica)
-          const systemPersona = "Sos un compañero técnico experto, amable y directo. Explicale al usuario de forma clara, natural y conversacional, usando lenguaje corriente y sin meter códigos raros ni comillas extrañas, basándote estrictamente en este fragmento del manual:\n\n";
-          const promptText = `${systemPersona}${contextText.substring(0, 12000)}\n\nPregunta del usuario: ${val}`;
+          const prompt = `Sos un compañero técnico experto, amable y directo. Explicale al usuario de forma clara, natural y conversacional, basándote estrictamente en este fragmento del manual:\n\n${snippet.substring(0, 12000)}\n\nPregunta: ${val}`;
           
-          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${activeKey}`, {
+          // Corrección clave: Endpoint con modelo estable v1beta (gemini-1.5-flash)
+          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
           });
 
           const data = await response.json();
-          const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-          
-          if (aiText) {
-            botDiv.textContent = aiText;
-          } else {
-            botDiv.textContent = "No pude procesar una respuesta con los datos de este fragmento.";
-          }
-        } catch (err) {
-          console.error(err);
-          botDiv.textContent = "Error de conexión con la API.";
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          bDiv.textContent = text || "No se pudo obtener una respuesta clara con este fragmento.";
+        } catch(err) {
+          bDiv.textContent = "Error de comunicación con la API de Gemini.";
         }
-
-        history.scrollTop = history.scrollHeight;
+        hist.scrollTop = hist.scrollHeight;
       }
 
-      $('#closeViewerBtn').addEventListener('click', () => {
-        $('#pdfViewerModal').style.display = 'none';
-      });
+      function handleMainGlobalQuery() {
+        const val = $('#mainQueryInput').value.trim();
+        if(!val) return;
+        addMsg('#mainChatBox', val, 'user');
+        $('#mainQueryInput').value = '';
 
-      $('#sendBtn').addEventListener('click', handleQuerySubmission);
-      $('#queryInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') handleQuerySubmission();
-      });
+        setTimeout(() => {
+          let found = false;
+          const qLower = val.toLowerCase();
+          
+          addMsg('#mainChatBox', `>> Buscando coincidencias para: "${val}"`, 'system');
 
-      $('#aiSendBtn').addEventListener('click', handleAIQuery);
-      $('#aiQueryInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') handleAIQuery();
-      });
+          for (let file of repositoryFiles) {
+            let pages = repositoryTexts[file] || [];
+            let matchedText = pages.find(p => p.toLowerCase().includes(qLower));
+            if (matchedText) {
+              found = true;
+              let fileUrl = `https://raw.githubusercontent.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/${GITHUB_CONFIG.branch}/${file}`;
+              
+              const aiMsg = addMsg('#mainChatBox', `Encontré resultados en el documento: ${file}`, 'ai');
+              
+              const card = document.createElement('div');
+              card.className = 'doc-action-card';
+              card.innerHTML = `
+                <div class="doc-header-row">
+                  <span class="doc-action-title">📄 ${file}</span>
+                  <span class="certer-badge">Encontrado</span>
+                </div>
+                <div class="doc-snippet">"${matchedText.substring(0, 180)}..."</div>
+                <div class="actions-row">
+                  <button class="action-btn open-online-btn"><span>🌐</span> ABRIR ONLINE</button>
+                  <a href="${fileUrl}" download="${file}" class="action-btn download"><span>💾</span> DESCARGAR AL TARRITO (PDF)</a>
+                </div>
+              `;
+              aiMsg.appendChild(card);
 
-      fetchRepositoryFiles();
+              card.querySelector('.open-online-btn').addEventListener('click', () => loadPdfInModal(file));
+            }
+          }
+
+          if(!found) {
+            addMsg('#mainChatBox', `>> No se encontraron menciones exactas a "${val}" en los manuales indexados.`, 'error');
+          }
+          $('#mainChatBox').scrollTop = $('#mainChatBox').scrollHeight;
+        }, 200);
+      }
+
+      $('#closeModalBtn').addEventListener('click', () => { $('#pdfViewerModal').style.display = 'none'; });
+      $('#mainSendBtn').addEventListener('click', handleMainGlobalQuery);
+      $('#mainQueryInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') handleMainGlobalQuery(); });
+      $('#modalSendBtn').addEventListener('click', handleModalAIQuery);
+      $('#modalQueryInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') handleModalAIQuery(); });
+
+      fetchFiles();
     })();
   </script>
  </body>
