@@ -42,6 +42,7 @@
     .msg.system{background:rgba(0,242,254,0.04); border:1px solid rgba(0,242,254,0.2); color:var(--accent); align-self:flex-start;}
     .msg.user{background:rgba(79,172,254,0.1); border:1px solid rgba(79,172,254,0.3); color:#fff; align-self:flex-end;}
     .msg.ai{background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.1); color:#cbd5e1; align-self:flex-start;}
+    .msg.error{background:rgba(255,85,119,0.05); border:1px solid rgba(255,85,119,0.3); color:#ff9bad; align-self:flex-start;}
 
     .doc-action-card{
       margin-top:10px; padding:12px; background:rgba(57,255,136,0.03); border:1px solid rgba(57,255,136,0.25);
@@ -140,7 +141,6 @@
         "seguridad-taller.pdf"
       ];
 
-      // Base de datos local en memoria donde guardaremos el texto extraído de cada PDF
       let indexedDocs = {};
 
       const $ = (s) => document.querySelector(s);
@@ -155,7 +155,6 @@
         return div;
       }
 
-      // Proceso de indexación automática al cargar la página
       async function indexRepository() {
         for (let fileName of repositoryFiles) {
           try {
@@ -164,7 +163,6 @@
             const pdfDoc = await loadingTask.promise;
             
             let fullText = "";
-            // Leemos hasta 5 páginas principales para extraer el núcleo del contenido sin demorar
             let maxPagesToRead = Math.min(pdfDoc.numPages, 5);
             
             for (let i = 1; i <= maxPagesToRead; i++) {
@@ -176,7 +174,7 @@
             indexedDocs[fileName] = fullText.toLowerCase();
           } catch (e) {
             console.warn(`No se pudo indexar ${fileName}:`, e);
-            indexedDocs[fileName] = ""; // Fallback vacío si hay error de red
+            indexedDocs[fileName] = "";
           }
         }
 
@@ -190,9 +188,7 @@
         const qLower = query.toLowerCase().trim();
         const searchWords = qLower.split(/\s+/).filter(w => w.length > 2);
 
-        if (searchWords.length === 0) {
-          return [];
-        }
+        if (searchWords.length === 0) return [];
 
         let results = [];
 
@@ -201,9 +197,8 @@
           let matchCount = 0;
           let snippet = "";
 
-          // Búsqueda inteligente por raíz de palabra y frecuencias
           searchWords.forEach(word => {
-            const root = word.slice(0, 4); // Raíz de 4 letras (ej: "óxid" para "óxidos")
+            const root = word.slice(0, 4);
             let regex = new RegExp(root, 'g');
             let matches = text.match(regex);
             if (matches) {
@@ -211,16 +206,13 @@
             }
           });
 
-          // Si coincide también con el nombre del archivo, le sumamos puntos extra de certeza
           if (fileName.toLowerCase().includes(searchWords[0])) {
             matchCount += 15;
           }
 
           if (matchCount > 0) {
-            // Calcular porcentaje de certeza relativo (tope 98%)
             let certainty = Math.min(Math.floor(matchCount * 12 + 45), 98);
             
-            // Extraer un fragmento de contexto del texto
             let snippetIndex = text.indexOf(searchWords[0]);
             if (snippetIndex !== -1) {
               let start = Math.max(0, snippetIndex - 40);
@@ -239,7 +231,6 @@
           }
         }
 
-        // Ordenar por mayor porcentaje de certeza
         results.sort((a, b) => b.certainty - a.certainty);
         return results;
       }
@@ -272,7 +263,7 @@
               <div class="doc-snippet">"${match.snippet}"</div>
               <div class="actions-row">
                 <button class="action-btn open-online-btn"><span>🌐</span> ABRIR ONLINE</button>
-                <a href="${match.fileUrl}" download="${match.fileName}" class="action-btn download"><span>💾</span> DESCARGAR PDF</a>
+                <a href="${match.fileUrl}" download="${match.fileName}" class="action-btn download"><span>💾</span> DESCARGAR AL TARRITO (PDF)</a>
               </div>
             `;
             aiMsg.appendChild(card);
@@ -320,7 +311,6 @@
         if (e.key === 'Enter') handleQuerySubmission();
       });
 
-      // Arrancar la indexación automática al iniciar la página
       indexRepository();
     })();
   </script>
