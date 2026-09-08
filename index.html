@@ -56,6 +56,27 @@
     }
     .open-btn:hover{transform:translateY(-1px); box-shadow:0 0 15px rgba(0,242,254,0.6);}
 
+    /* Visor interno flotante para PDFs */
+    #pdfViewerModal {
+      display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(2, 4, 10, 0.9); z-index: 1000; backdrop-filter: blur(8px);
+      flex-direction: column; padding: 20px;
+    }
+    .viewer-header {
+      display: flex; justify-content: space-between; align-items: center;
+      background: var(--panel); border: 1px solid var(--stroke); padding: 10px 20px;
+      border-radius: 8px 8px 0 0; font-size: 13px; color: var(--accent);
+    }
+    .close-viewer {
+      background: #ff5577; color: #fff; border: none; padding: 6px 12px;
+      border-radius: 4px; cursor: pointer; font-family: var(--mono); font-weight: bold; font-size: 11px;
+    }
+    .viewer-body {
+      flex: 1; background: #0b1329; border: 1px solid var(--stroke); border-top: none;
+      border-radius: 0 0 8px 8px; overflow: auto; display: flex; justify-content: center; padding: 20px;
+    }
+    canvas { max-width: 100%; box-shadow: 0 0 20px rgba(0,0,0,0.8); background: white; }
+
     .input-panel{
       background:var(--panel); border:1px solid var(--stroke); border-radius:12px; padding:12px;
       display:flex; gap:12px; align-items:center;
@@ -89,6 +110,17 @@
    </div>
   </div>
 
+  <!-- Visor Interno (Oculto hasta que se hace clic) -->
+  <div id="pdfViewerModal">
+    <div class="viewer-header">
+      <span id="viewerTitle">📄 Lector Interno - Documento</span>
+      <button class="close-viewer" id="closeViewerBtn">CERRAR [X]</button>
+    </div>
+    <div class="viewer-body" id="viewerCanvasContainer">
+      <canvas id="pdfCanvas"></canvas>
+    </div>
+  </div>
+
   <script>
     (() => {
       'use strict';
@@ -102,7 +134,6 @@
       let repository = [];
       const $ = (s) => document.querySelector(s);
 
-      // Abrir base de datos interna IndexedDB con soporte para almacenar blobs binarios de los PDFs
       function openDB() {
         return new Promise((resolve, reject) => {
           const request = indexedDB.open("NexusXDatabase", 2);
@@ -193,7 +224,6 @@
 
             $('#sysState').textContent = `Procesando: ${fileName}`;
             
-            // Descargamos el archivo binario completo para guardarlo en la netbook
             const pdfRes = await fetch(rawUrl);
             const arrayBuffer = await pdfRes.arrayBuffer();
             const textContent = await extractPDFData(arrayBuffer);
@@ -201,7 +231,7 @@
             const docObj = {
               id: file.path,
               name: fileName,
-              blobData: arrayBuffer, // Guardamos el PDF binario real adentro del almacenamiento interno
+              blobData: arrayBuffer,
               content: textContent
             };
 
@@ -289,30 +319,52 @@
             card.innerHTML = `
               <div class="doc-action-title">📄 ARCHIVO FUENTE: ${result.doc.name}</div>
               <button class="open-btn" data-docid="${result.doc.id}">
-                <span>📂</span> ABRIR PDF DESDE MEMORIA LOCAL
+                <span>📂</span> ABRIR LECTOR INTERNO
               </button>
             `;
             aiMsg.appendChild(card);
 
-            // Asignamos la acción directa offline al botón creado dinámicamente
             card.querySelector('.open-btn').addEventListener('click', () => {
-              openOfflinePDF(result.doc);
+              openInternalPDFViewer(result.doc);
             });
           }
 
           const box = $('#chatBox');
           box.scrollTop = box.scrollHeight;
-          $('#sendBtn').disabled = false;
+          $('#sendBtn'].disabled = false;
           $('#queryInput').focus();
         }, 300);
       }
 
-      function openOfflinePDF(doc) {
-        // Creamos un Blob interno con el archivo guardado en la netbook y lo abrimos en una pestaña nueva del navegador
-        const blob = new Blob([doc.blobData], { type: 'application/pdf' });
-        const blobUrl = URL.createObjectURL(blob);
-        window.open(blobUrl, '_blank');
+      // Renderiza el PDF dentro del navegador de forma interna con PDF.js (sin requerir visor de Windows)
+      async function openInternalPDFViewer(doc) {
+        $('#viewerTitle').textContent = `📄 Lector Interno - ${doc.name}`;
+        $('#pdfViewerModal').style.display = 'flex';
+
+        try {
+          const loadingTask = pdfjsLib.getDocument({ data: doc.blobData });
+          const pdfDoc = await loadingTask.promise;
+          const page = await pdfDoc.getPage(1); // Renderizamos la primera página como vista previa inicial
+
+          const canvas = document.getElementById('pdfCanvas');
+          const context = canvas.getContext('2d');
+          const viewport = page.getViewport({ scale: 1.5 });
+
+          canvas.height = viewport.height;
+          canvas.width = viewport.width;
+
+          await page.render({
+            canvasContext: context,
+            viewport: viewport
+          }).promise;
+        } catch (e) {
+          console.error("Error al renderizar PDF internamente:", e);
+        }
       }
+
+      $('#closeViewerBtn').addEventListener('click', () => {
+        $('#pdfViewerModal').style.display = 'none';
+      });
 
       $('#sendBtn').addEventListener('click', handleQuerySubmission);
       $('#queryInput').addEventListener('keypress', (e) => {
