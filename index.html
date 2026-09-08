@@ -137,7 +137,7 @@
 
   <div class="container">
    <div class="chat-box" id="chatBox">
-    <div class="msg system">>> Sistema listo. Ingresá tu clave arriba a la derecha (si no lo hiciste) y escribí un concepto técnico para buscar en los manuales.</div>
+    <div class="msg system">>> Sistema listo. Ingresá tu clave arriba a la derecha y escribí un concepto para buscar en los manuales.</div>
    </div>
 
    <div class="input-panel">
@@ -166,7 +166,7 @@
           <span style="color:var(--success); font-size:9px;" id="apiStatusBadge">[API LISTA]</span>
         </div>
         <div class="ai-chat-history" id="aiChatHistory">
-          <div class="ai-msg bot">Manual sincronizado con Gemini. Preguntame lo que necesites sobre este documento.</div>
+          <div class="ai-msg bot">Manual indexado por páginas. Preguntame lo que necesites sobre este documento.</div>
         </div>
         <div class="ai-input-row">
           <input id="aiQueryInput" type="text" placeholder="Ej: Explicame los puntos clave..." autocomplete="off">
@@ -204,12 +204,11 @@
 
       let repositoryFiles = [];
       let parsedParagraphs = {};  
-      let rawFullTexts = {};
+      let docPagesText = {}; // Almacena el texto separado por páginas para documentos gigantes
       
       let activePdfDoc = null;
       let activePageNum = 1;
       let activeTotalPages = 1;
-      let currentActiveFullText = "";
 
       const $ = (s) => document.querySelector(s);
 
@@ -255,23 +254,24 @@
             const pdfDoc = await loadingTask.promise;
             
             let paragraphs = [];
-            let fullDocText = "";
+            let pagesArray = [];
             
             for (let i = 1; i <= pdfDoc.numPages; i++) {
               const page = await pdfDoc.getPage(i);
               const textContent = await page.getTextContent();
               let pageText = textContent.items.map(item => item.str).join(" ");
-              fullDocText += pageText + "\n";
-              let chunks = pageText.split(/(?:\.|\n)+/).map(c => c.trim()).filter(c => c.length > 25);
+              pagesArray.push(pageText); // Guardamos cada página limpia
+
+              let chunks = pageText.split(/(?:\.|\n)+/).map(c => c.trim()).filter(c => c.length > 20);
               paragraphs.push(...chunks);
             }
 
             parsedParagraphs[fileName] = paragraphs;
-            rawFullTexts[fileName] = fullDocText;
+            docPagesText[fileName] = pagesArray;
           } catch (e) {
             console.warn(`No se pudo indexar el archivo ${fileName}:`, e);
             parsedParagraphs[fileName] = [];
-            rawFullTexts[fileName] = "";
+            docPagesText[fileName] = [];
           }
         }
 
@@ -370,12 +370,14 @@
         }, 150);
       }
 
+      let currentActiveFileName = "";
+
       async function openCloudPDFViewer(url, fileName) {
+        currentActiveFileName = fileName;
         $('#viewerTitle').textContent = `📄 Lector Online & Gemini API - ${fileName}`;
         $('#pdfViewerModal').style.display = 'flex';
-        currentActiveFullText = rawFullTexts[fileName] || "";
 
-        $('#aiChatHistory').innerHTML = `<div class="ai-msg bot">Manual "${fileName}" cargado. Gemini está listo para responder tus consultas sobre este documento.</div>`;
+        $('#aiChatHistory').innerHTML = `<div class="ai-msg bot">Manual "${fileName}" cargado. Preguntame lo que necesites y te respondo directo.</div>`;
 
         try {
           const loadingTask = pdfjsLib.getDocument(url);
@@ -442,7 +444,23 @@
         }
 
         try {
-          const promptText = `Sos un asistente técnico experto. Explicale y respondé al usuario de forma natural, clara y conversacional basándote en este texto del manual:\n\n${currentActiveFullText.substring(0, 20000)}\n\nPregunta: ${val}`;
+          // Tomamos inteligentemente el texto de la página que está viendo ahora mismo en el visor
+          let pages = docPagesText[currentActiveFileName] || [];
+          let contextText = "";
+          
+          if (pages.length > 0) {
+            // Si hay páginas, le pasamos la página actual y las dos adyacentes para dar contexto perfecto sin saturar
+            let pIdx = activePageNum - 1;
+            let start = Math.max(0, pIdx - 1);
+            let end = Math.min(pages.length - 1, pIdx + 1);
+            for (let i = start; i <= end; i++) {
+              contextText += `--- PÁGINA ${i+1} ---\n` + pages[i] + "\n\n";
+            }
+          }
+
+          // Instrucción de sistema humana, directa y conversacional (cero robótica)
+          const systemPersona = "Sos un compañero técnico experto, amable y directo. Explicale al usuario de forma clara, natural y conversacional, usando lenguaje corriente y sin meter códigos raros ni comillas extrañas, basándote estrictamente en este fragmento del manual:\n\n";
+          const promptText = `${systemPersona}${contextText.substring(0, 12000)}\n\nPregunta del usuario: ${val}`;
           
           const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${activeKey}`, {
             method: 'POST',
@@ -456,7 +474,7 @@
           if (aiText) {
             botDiv.textContent = aiText;
           } else {
-            botDiv.textContent = "No pude procesar una respuesta con los datos de este documento.";
+            botDiv.textContent = "No pude procesar una respuesta con los datos de este fragmento.";
           }
         } catch (err) {
           console.error(err);
