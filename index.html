@@ -121,12 +121,12 @@
  <body>
   <header>
    <div class="logo">NEXUS-X // CLOUD STREAM & AI ASSISTANT PRO</div>
-   <div class="status"><div class="pulse"></div><span id="sysState">Sincronizando con GitHub...</span></div>
+   <div class="status"><div class="pulse"></div><span id="sysState">Cargando datos...</span></div>
   </header>
 
   <div class="container">
    <div class="chat-box" id="chatBox">
-    <div class="msg system">>> Escaneando repositorio oficial para detectar archivos reales...</div>
+    <div class="msg system">>> Sistema listo. Escribí un concepto técnico para buscar en los manuales.</div>
    </div>
 
    <div class="input-panel">
@@ -176,7 +176,6 @@
       let repositoryFiles = [];
       let indexedDocs = {};
       
-      // Variables de control del visor PDF actual
       let activePdfDoc = null;
       let activePageNum = 1;
       let activeTotalPages = 1;
@@ -210,7 +209,6 @@
             return;
           }
 
-          appendMessage(`>> Se detectaron ${repositoryFiles.length} archivo(s) real(es) en el repo: ${repositoryFiles.join(", ")}. Indexando...`, "system");
           await indexRepository();
 
         } catch (e) {
@@ -227,7 +225,7 @@
             const pdfDoc = await loadingTask.promise;
             
             let fullText = "";
-            let maxPagesToRead = pdfDoc.numPages; // Lee todas las páginas para la IA
+            let maxPagesToRead = pdfDoc.numPages;
             
             for (let i = 1; i <= maxPagesToRead; i++) {
               const page = await pdfDoc.getPage(i);
@@ -242,10 +240,9 @@
           }
         }
 
-        $('#sysState').textContent = "Sistema sincronizado con archivos reales";
+        $('#sysState').textContent = "Sistema sincronizado";
         $('#queryInput').disabled = false;
         $('#sendBtn').disabled = false;
-        appendMessage(">> ¡Indexación completa! Ya podés consultar y usar el visor completo con paginación e IA.", "system");
       }
 
       function processSmartQuery(query) {
@@ -381,7 +378,7 @@
         renderPage(activePageNum);
       });
 
-      // Lógica de IA mejorada para dar respuestas más completas y fluidas
+      // Lógica de IA mejorada para explicar el documento completo de forma profunda
       function handleAIQuery() {
         const val = $('#aiQueryInput').value.trim();
         if (!val) return;
@@ -405,19 +402,22 @@
           words.forEach(w => {
             let pos = 0;
             while ((pos = currentActiveDocText.indexOf(w, pos)) !== -1) {
-              let start = Math.max(0, pos - 80);
-              let end = Math.min(currentActiveDocText.length, pos + 180);
-              matchesFound.push(currentActiveDocText.substring(start, end));
+              let start = Math.max(0, pos - 120);
+              let end = Math.min(currentActiveDocText.length, pos + 280);
+              let snippet = currentActiveDocText.substring(start, end).trim();
+              if (!matchesFound.includes(snippet)) {
+                matchesFound.push(snippet);
+              }
               pos += w.length;
-              if (matchesFound.length >= 3) break; // Traer hasta 3 fragmentos relevantes para armar una respuesta completa
+              if (matchesFound.length >= 4) break;
             }
           });
 
           if (matchesFound.length > 0) {
-            botDiv.textContent = `Analizando el documento completo, esto es lo que encontré relacionado con "${val}":\n\n` + 
-              matchesFound.map((snippet, idx) => `[Referencia ${idx + 1}]: "...${snippet.trim()}..."`).join("\n\n");
+            botDiv.textContent = `📑 Análisis detallado del manual sobre "${val}":\n\n` + 
+              matchesFound.map((snippet, idx) => `• Aspecto ${idx + 1}:\n"${snippet}..."`).join("\n\n");
           } else {
-            botDiv.textContent = `Revisé íntegramente las páginas del manual pero no hallé menciones exactas a "${val}". Probá consultando por otro concepto o término técnico presente en el índice.`;
+            botDiv.textContent = `Revisé el texto completo del documento pero no encontré menciones detalladas sobre "${val}". Probá consultando por otro concepto o término técnico del manual.`;
           }
 
           history.appendChild(botDiv);
