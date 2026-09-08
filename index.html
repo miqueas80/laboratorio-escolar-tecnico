@@ -3,7 +3,7 @@
  <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>NEXUS-X // QUANTUM CORE v4.5</title>
+  <title>NEXUS-X // QUANTUM CORE v4.7</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
     if (window.pdfjsLib) {
@@ -57,8 +57,6 @@
     }
     .doc-header-row { display: flex; justify-content: space-between; align-items: center; }
     .doc-action-title{color:var(--success); font-size:11px; font-weight:bold;}
-    .page-badge { background: rgba(0,242,254,0.15); color: var(--accent); padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; border: 1px solid var(--stroke); }
-    .doc-snippet { font-size: 11px; color: var(--muted); border-left: 2px solid var(--success); padding-left: 8px; background: rgba(0,0,0,0.2); padding: 6px; border-radius: 0 4px 4px 0;}
     
     .actions-row{display:flex; gap:8px; flex-wrap:wrap; margin-top: 4px;}
     .action-btn{
@@ -120,11 +118,11 @@
   <div class="workspace">
     <div class="main-panel">
       <div class="chat-scroll" id="mainChatBox">
-        <div class="msg system">>> Núcleo listo. Buscá un concepto para ver exactamente en qué páginas aparece en cada manual.</div>
+        <div class="msg system">>> Núcleo listo. Ingresá un concepto para encontrar los archivos correspondientes.</div>
       </div>
 
       <div class="input-box-area">
-        <input id="mainQueryInput" type="text" placeholder="Buscá un concepto (ej: soldadura, pernos)..." autocomplete="off" disabled>
+        <input id="mainQueryInput" type="text" placeholder="Buscá un concepto (ej: soluciones, reacciones)..." autocomplete="off" disabled>
         <button class="btn-action" id="mainSendBtn" disabled>BUSCAR</button>
       </div>
     </div>
@@ -145,9 +143,9 @@
         <canvas id="pdfCanvas"></canvas>
       </div>
       <div class="viewer-sidebar-chat">
-        <div style="font-size:11px; color:var(--success); font-weight:bold; border-bottom:1px solid var(--stroke); padding-bottom:6px;">🤖 ASISTENTE DE PÁGINA</div>
+        <div style="font-size:11px; color:var(--success); font-weight:bold; border-bottom:1px solid var(--stroke); padding-bottom:6px;">🤖 ASISTENTE DE GEMINI (VISOR)</div>
         <div class="v-chat-history" id="modalChatHistory">
-          <div class="v-msg bot">Documento cargado. Consultame sobre la página actual.</div>
+          <div class="v-msg bot">Documento cargado. Consultame para encontrar las páginas exactas y darte certeza sobre el contenido.</div>
         </div>
         <div class="v-input-row">
           <input id="modalQueryInput" type="text" placeholder="Preguntale a Gemini..." autocomplete="off">
@@ -170,9 +168,9 @@
         if(val) {
           localStorage.setItem('nexus_gemini_key', val);
           globalApiKey = val;
-          alert("¡API Key guardada en tu navegador!");
+          alert("¡API Key guardada!");
         } else {
-          alert("Por favor ingresa una clave válida.");
+          alert("Ingresá una clave válida.");
         }
       });
 
@@ -202,6 +200,9 @@
           const res = await fetch(`https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/`);
           if (!res.ok) throw new Error("Fallo de conexión");
           const data = await res.json();
+          
+          if (!Array.isArray(data)) throw new Error("Respuesta inválida de GitHub");
+          
           repositoryFiles = data.filter(i => i.type === 'file' && i.name.toLowerCase().endsWith('.pdf')).map(i => i.name);
 
           if (repositoryFiles.length === 0) {
@@ -213,15 +214,14 @@
         } catch (e) {
           console.error(e);
           $('#sysState').textContent = "Error de sincronización";
-          addMsg('#mainChatBox', ">> Error al conectar con el repositorio de manuales.", "error");
+          addMsg('#mainChatBox', ">> Error al conectar con el repositorio.", "error");
         }
       }
 
-      // Indexación ultrarrápida ejecutada en paralelo con Promise.all
       async function indexAllPdfs() {
         const tasks = repositoryFiles.map(async (file) => {
           try {
-            const url = `https://raw.githubusercontent.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/${GITHUB_CONFIG.branch}/${file}`;
+            const url = `https://raw.githubusercontent.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/${GITHUB_CONFIG.branch}/${encodeURIComponent(file)}`;
             const pdf = await pdfjsLib.getDocument(url).promise;
             let pagesArray = [];
             for (let i = 1; i <= pdf.numPages; i++) {
@@ -241,7 +241,7 @@
         $('#sysState').textContent = "Sistema sincronizado";
         $('#mainQueryInput').disabled = false;
         $('#mainSendBtn').disabled = false;
-        addMsg('#mainChatBox', `>> Se indexaron ${repositoryFiles.length} manuales a máxima velocidad. Ya podés buscar conceptos específicos página por página.`, 'system');
+        addMsg('#mainChatBox', `>> Se indexaron ${repositoryFiles.length} manuales correctamente. Ingresá un concepto para encontrar los archivos correspondientes.`, 'system');
       }
 
       async function loadPdfInModal(fileName, targetPage = 1) {
@@ -249,15 +249,15 @@
         activePagesCache = repositoryTexts[fileName] || [];
         $('#modalDocTitle').textContent = `📄 ${fileName}`;
         $('#pdfViewerModal').style.display = 'flex';
-        $('#modalChatHistory').innerHTML = `<div class="v-msg bot">Manual "${fileName}" cargado en Pág. ${targetPage}. Consultame lo que necesites.</div>`;
+        $('#modalChatHistory').innerHTML = `<div class="v-msg bot">Manual "${fileName}" cargado. Consultame para encontrar las páginas exactas y darte certeza.</div>`;
 
         try {
-          const url = `https://raw.githubusercontent.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/${GITHUB_CONFIG.branch}/${fileName}`;
+          const url = `https://raw.githubusercontent.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/${GITHUB_CONFIG.branch}/${encodeURIComponent(fileName)}`;
           activePdfDoc = await pdfjsLib.getDocument(url).promise;
           activePageNum = targetPage;
           renderCurrentPage();
         } catch(e) {
-          alert("No se pudo cargar el visor para este archivo.");
+          alert("No se pudo cargar el visor.");
         }
       }
 
@@ -277,7 +277,7 @@
           canvas.width = vp.width;
           await page.render({ canvasContext: ctx, viewport: vp }).promise;
         } catch (err) {
-          console.error("Error al renderizar página:", err);
+          console.error("Error al renderizar:", err);
         } finally {
           isRenderingPage = false;
         }
@@ -297,21 +297,35 @@
 
         const bDiv = document.createElement('div');
         bDiv.className = 'v-msg bot';
-        bDiv.textContent = "Pensando...";
+        bDiv.textContent = "Buscando páginas exactas...";
         hist.appendChild(bDiv);
         hist.scrollTop = hist.scrollHeight;
 
         const key = localStorage.getItem('nexus_gemini_key') || globalApiKey;
         if(!key) {
-          bDiv.textContent = "⚠️ Primero debés ingresar y guardar tu API Key en la barra superior.";
+          bDiv.textContent = "⚠️ Ingresá y guardá tu API Key en la barra superior.";
           return;
         }
 
         try {
-          let pIdx = activePageNum - 1;
-          let snippet = activePagesCache.slice(Math.max(0, pIdx-1), Math.min(activePagesCache.length, pIdx+2)).join("\n\n");
+          // Gemini busca en las páginas del manual activo para dar certeza y ubicar el contenido
+          const qLower = val.toLowerCase();
+          let matchedPagesInfo = [];
+          activePagesCache.forEach((pageTxt, idx) => {
+            if(pageTxt.toLowerCase().includes(qLower)) {
+              matchedPagesInfo.push(`Página ${idx+1}: ${pageTxt.substring(0, 350)}`);
+            }
+          });
 
-          const prompt = `Sos un compañero técnico experto, amable y directo. Explicale al usuario de forma clara, basándote estrictamente en este fragmento del manual (Página ${activePageNum}):\n\n${snippet.substring(0, 12000)}\n\nPregunta: ${val}`;
+          let contextText = "";
+          if (matchedPagesInfo.length > 0) {
+            contextText = `Coincidencias encontradas en este manual:\n` + matchedPagesInfo.slice(0, 8).join("\n---\n");
+          } else {
+            let pIdx = activePageNum - 1;
+            contextText = `Página actual (${activePageNum}):\n` + activePagesCache.slice(Math.max(0, pIdx-1), Math.min(activePagesCache.length, pIdx+2)).join("\n\n");
+          }
+
+          const prompt = `Sos un asistente técnico experto. Basándote estrictamente en este contenido del manual "${activeFileName}", responde con certeza al usuario indicándole incluso en qué página exacta está lo que busca si corresponde:\n\n${contextText.substring(0, 12000)}\n\nConsulta: ${val}`;
           
           const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
             method: 'POST',
@@ -319,9 +333,11 @@
             body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
           });
 
+          if (!response.ok) throw new Error("Error en la respuesta de Gemini");
+
           const data = await response.json();
           const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-          bDiv.textContent = text || "No se pudo obtener una respuesta clara con este fragmento.";
+          bDiv.textContent = text || "No se pudo obtener una respuesta clara.";
         } catch(err) {
           bDiv.textContent = "Error de comunicación con la API de Gemini.";
         }
@@ -336,54 +352,42 @@
 
         setTimeout(() => {
           const qLower = val.toLowerCase();
-          addMsg('#mainChatBox', `>> Buscando coincidencias exactas para: "${val}" en todas las páginas...`, 'system');
+          addMsg('#mainChatBox', `>> Buscando archivos correspondientes para: "${val}"...`, 'system');
 
-          let totalFound = 0;
-          const fragment = document.createDocumentFragment();
-
+          let matchingFiles = [];
           for (let file of repositoryFiles) {
             let pages = repositoryTexts[file] || [];
-            let matchingPages = [];
-
-            pages.forEach((pageText, index) => {
-              if (pageText.toLowerCase().includes(qLower)) {
-                matchingPages.push({ pageNumber: index + 1, snippet: pageText });
-              }
-            });
-
-            if (matchingPages.length > 0) {
-              totalFound++;
-              let fileUrl = `https://raw.githubusercontent.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/${GITHUB_CONFIG.branch}/${file}`;
-              
-              const aiMsg = addMsg('#mainChatBox', `Coincidencias en el manual: ${file} (${matchingPages.length} página${matchingPages.length > 1 ? 's' : ''})`, 'ai');
-              
-              matchingPages.forEach(match => {
-                const card = document.createElement('div');
-                card.className = 'doc-action-card';
-                card.innerHTML = `
-                  <div class="doc-header-row">
-                    <span class="doc-action-title">📄 ${file}</span>
-                    <span class="page-badge">Página ${match.pageNumber}</span>
-                  </div>
-                  <div class="doc-snippet">"${match.snippet.substring(0, 160)}..."</div>
-                  <div class="actions-row">
-                    <button class="action-btn open-page-btn" data-file="${file}" data-page="${match.pageNumber}"><span>🔍</span> IR A PÁG. ${match.pageNumber}</button>
-                    <a href="${fileUrl}" download="${file}" class="action-btn download"><span>💾</span> DESCARGAR AL TARRITO (PDF)</a>
-                  </div>
-                `;
-                aiMsg.appendChild(card);
-
-                card.querySelector('.open-page-btn').addEventListener('click', (e) => {
-                  const targetFile = e.currentTarget.getAttribute('data-file');
-                  const targetPage = parseInt(e.currentTarget.getAttribute('data-page'), 10);
-                  loadPdfInModal(targetFile, targetPage);
-                });
-              });
+            let found = pages.some(pageText => pageText.toLowerCase().includes(qLower));
+            if (found) {
+              matchingFiles.push(file);
             }
           }
 
-          if(totalFound === 0) {
-            addMsg('#mainChatBox', `>> No se encontraron menciones para "${val}" en ningún manual indexado.`, 'error');
+          if (matchingFiles.length > 0) {
+            const aiMsg = addMsg('#mainChatBox', `Se encontraron ${matchingFiles.length} archivo(s) correspondientes para "${val}":`, 'ai');
+            
+            matchingFiles.forEach(file => {
+              let fileUrl = `https://raw.githubusercontent.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/${GITHUB_CONFIG.branch}/${encodeURIComponent(file)}`;
+              const card = document.createElement('div');
+              card.className = 'doc-action-card';
+              card.innerHTML = `
+                <div class="doc-header-row">
+                  <span class="doc-action-title">📄 ${file}</span>
+                </div>
+                <div class="actions-row" style="margin-top:8px;">
+                  <button class="action-btn open-file-btn" data-file="${file}"><span>🔍</span> ABRIR EN VISOR</button>
+                  <a href="${fileUrl}" download="${file}" class="action-btn download"><span>💾</span> DESCARGAR PDF</a>
+                </div>
+              `;
+              aiMsg.appendChild(card);
+
+              card.querySelector('.open-file-btn').addEventListener('click', (e) => {
+                const targetFile = e.currentTarget.getAttribute('data-file');
+                loadPdfInModal(targetFile, 1);
+              });
+            });
+          } else {
+            addMsg('#mainChatBox', `>> No se encontraron archivos que contengan "${val}".`, 'error');
           }
           $('#mainChatBox').scrollTop = $('#mainChatBox').scrollHeight;
         }, 50);
