@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>NEXUS-X // QUANTUM CORE v5.6</title>
+  <title>NEXUS-X // QUANTUM CORE v5.7</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
     if (window.pdfjsLib) {
@@ -332,28 +332,29 @@
         }
       }
 
+      // LLAMADA DIRECTA Y LIMPIA A LA API V1BETA
       async function callGeminiAPI(prompt, key) {
-        const models = ["gemini-1.5-flash", "gemini-1.5-pro"];
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
+        
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ 
+            contents: [{ parts: [{ text: prompt }] }] 
+          })
+        });
 
-        for (const model of models) {
-          try {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
-            const res = await fetch(url, {
-              method: 'POST',
-              headers: {'Content-Type': 'application/json'},
-              body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-            });
+        const data = await res.json().catch(() => ({}));
 
-            if (!res.ok) continue;
-
-            const data = await res.json();
-            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (text) return text;
-          } catch (e) {
-            console.warn(`Fallo con ${model}, intentando siguiente...`);
-          }
+        if (!res.ok) {
+          throw new Error(data.error?.message || `HTTP error! status: ${res.status}`);
         }
-        throw new Error("No se pudo obtener respuesta de Gemini.");
+
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!text) {
+          throw new Error("El modelo no devolvió texto.");
+        }
+        return text;
       }
 
       async function handleModalAIQuery() {
