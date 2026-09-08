@@ -38,7 +38,7 @@
       padding:20px; overflow-y:auto; max-height:55vh; min-height:350px; display:flex; flex-direction:column; gap:16px;
       box-shadow:0 10px 30px rgba(0,0,0,0.8);
     }
-    .msg{padding:12px 16px; border-radius:8px; font-size:13px; line-height:1.5; max-width:85%;}
+    .msg{padding:12px 16px; border-radius:8px; font-size:13px; line-height:1.5; max-width:85%; white-space: pre-line;}
     .msg.system{background:rgba(0,242,254,0.05); border:1px solid rgba(0,242,254,0.2); color:var(--accent); align-self:flex-start;}
     .msg.user{background:rgba(79,172,254,0.1); border:1px solid rgba(79,172,254,0.3); color:#fff; align-self:flex-end;}
     .msg.ai{background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.1); color:#cbd5e1; align-self:flex-start;}
@@ -57,8 +57,12 @@
     }
     .btn:hover{box-shadow:0 0 15px rgba(0,242,254,0.5); transform:translateY(-1px);}
 
-    .docs-loaded{font-size:11px; color:var(--muted); display:flex; gap:12px; flex-wrap:wrap;}
-    .doc-pill{background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); padding:4px 8px; border-radius:4px;}
+    .docs-loaded{font-size:11px; color:var(--muted); display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+    .doc-pill{
+      background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.12); padding:6px 12px; border-radius:6px;
+      color:var(--text); text-decoration:none; display:inline-flex; align-items:center; gap:8px; cursor:pointer; transition:border-color 0.2s, background 0.2s;
+    }
+    .doc-pill:hover{border-color:var(--accent); background:rgba(0,242,254,0.08);}
   </style>
  </head>
  <body>
@@ -73,11 +77,11 @@
    </div>
 
    <div class="chat-box" id="chatBox">
-    <div class="msg system">>> NEXUS-X Core inicializado. Sistema autónomo listo para procesar consultas técnicas sobre los manuales y PDFs cargados. Escribe tu pregunta abajo.</div>
+    <div class="msg system">>> NEXUS-X Core inicializado. Sistema autónomo listo para procesar consultas técnicas sobre los manuales y PDFs cargados. Escribe tu pregunta abajo o abre los documentos directamente arriba.</div>
    </div>
 
    <div class="input-panel">
-    <input id="queryInput" type="text" placeholder="Ej: ¿Cuáles son las reglas de nomenclatura para óxidos ácidos según el PDF?" autocomplete="off">
+    <input id="queryInput" type="text" placeholder="Ej: ¿Cuáles son las reglas de nomenclatura o componentes del PDF?" autocomplete="off">
     <button class="btn" id="sendBtn">CONSULTAR</button>
    </div>
   </div>
@@ -86,7 +90,6 @@
     (() => {
       'use strict';
 
-      // Base de documentos institucionales / técnicos
       const repository = [
         {
           id: "DOC-01",
@@ -126,7 +129,12 @@
           if (doc.fileRef.endsWith('.pdf')) {
             doc.content = await extractPDF(doc.fileRef);
           }
-          listEl.innerHTML += `<div class="doc-pill">📄 ${doc.name} (${Math.round(doc.content.length / 100)} kb analizados)</div>`;
+          // Agregamos el botón interactivo que abre el documento directamente en una pestaña
+          listEl.innerHTML += `
+            <a href="${doc.fileRef}" target="_blank" rel="noopener" class="doc-pill">
+              <span>📄</span> ${doc.name} 
+              <span style="font-size:10px; color:var(--accent);">[ABRIR PDF]</span>
+            </a>`;
         }
         $('#sysState').textContent = "Núcleo neural operativo al 100%";
       }
@@ -140,7 +148,6 @@
         box.scrollTop = box.scrollHeight;
       }
 
-      // Motor de búsqueda contextual avanzada (Simulación de RAG inteligente local)
       function processQuery(query) {
         const qLower = query.toLowerCase();
         let bestMatch = null;
@@ -159,12 +166,11 @@
         });
 
         if (!bestMatch || highestScore === 0) {
-          return ">> No se detectaron coincidencias semánticas directas en los repositorios locales indexados. Intenta reformular con términos técnicos específicos (ej: óxidos, nomenclatura, seguridad).";
+          return ">> No se detectaron coincidencias semánticas directas en los repositorios locales indexados. Intenta reformular con términos técnicos específicos (ej: óxidos, nomenclatura, seguridad) o abre el PDF directamente arriba.";
         }
 
-        // Extraer un fragmento relevante basado en la consulta
-        const contentSample = bestMatch.content.substring(0, 400).replace(/\s+/g, ' ').trim();
-        return `>> [ANÁLISIS LOCAL - ${bestMatch.name}]\nEn base al documento analizado, los registros indican lo siguiente:\n"${contentSample}..."\n\n[Diagnóstico del Sistema: Coincidencia encontrada con nivel de relevancia ${highestScore * 25}%].`;
+        const contentSample = bestMatch.content.substring(0, 350).replace(/\s+/g, ' ').trim();
+        return `>> [COINCIDENCIA ENCONTRADA: ${bestMatch.name}]\n\n"${contentSample}..."\n\n[Sugerencia: Puedes hacer clic en el botón superior "${bestMatch.name}" para ver el documento original completo].`;
       }
 
       $('#sendBtn').addEventListener('click', () => {
