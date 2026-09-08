@@ -1,196 +1,1596 @@
 <!doctype html>
 <html lang="es">
- <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>NEXUS-X · Autonomous AI Core</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script>
-    if (window.pdfjsLib) {
-      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    }
-  </script>
-  <style>
-    :root{
-      --bg:#02040a; --panel:rgba(8, 15, 28, 0.85); --stroke:rgba(0, 242, 254, 0.25);
-      --text:#e2e8f0; --muted:#64748b; --accent:#00f2fe; --accent2:#4facfe;
-      --mono:ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
-    }
-    *{box-sizing:border-box;}
-    body{
-      margin:0; font-family:var(--mono); color:var(--text); background:var(--bg);
-      background-image: linear-gradient(rgba(0,242,254,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,242,254,0.03) 1px, transparent 1px);
-      background-size: 30px 30px; min-height:100vh; display:flex; flex-direction:column;
-    }
-    header{
-      padding:16px 24px; border-bottom:1px solid var(--stroke); background:var(--panel);
-      display:flex; justify-content:space-between; align-items:center; backdrop-filter:blur(10px);
-    }
-    .logo{font-size:14px; font-weight:bold; letter-spacing:2px; color:var(--accent); text-shadow:0 0 10px rgba(0,242,254,0.4);}
-    .status{font-size:11px; color:var(--muted); display:flex; align-items:center; gap:8px;}
-    .pulse{width:6px; height:6px; background:var(--accent); border-radius:50%; box-shadow:0 0 8px var(--accent); animation:blink 1.5s infinite;}
-    @keyframes blink{0%{opacity:1;} 50%{opacity:0.2;} 100%{opacity:1;}}
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEXUS-X · Autonomous AI Core</title>
 
-    .container{max-width:1000px; width:94vw; margin:24px auto; flex:1; display:flex; flex-direction:column; gap:16px;}
-    
-    .chat-box{
-      flex:1; background:var(--panel); border:1px solid var(--stroke); border-radius:12px;
-      padding:20px; overflow-y:auto; max-height:55vh; min-height:350px; display:flex; flex-direction:column; gap:16px;
-      box-shadow:0 10px 30px rgba(0,0,0,0.8);
-    }
-    .msg{padding:12px 16px; border-radius:8px; font-size:13px; line-height:1.5; max-width:85%; white-space: pre-line;}
-    .msg.system{background:rgba(0,242,254,0.05); border:1px solid rgba(0,242,254,0.2); color:var(--accent); align-self:flex-start;}
-    .msg.user{background:rgba(79,172,254,0.1); border:1px solid rgba(79,172,254,0.3); color:#fff; align-self:flex-end;}
-    .msg.ai{background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.1); color:#cbd5e1; align-self:flex-start;}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
-    .input-panel{
-      background:var(--panel); border:1px solid var(--stroke); border-radius:12px; padding:12px;
-      display:flex; gap:12px; align-items:center;
-    }
-    .input-panel input{
-      flex:1; background:transparent; border:none; outline:none; color:var(--text); font-family:var(--mono); font-size:14px;
-    }
-    .btn{
-      background:linear-gradient(135deg, var(--accent), var(--accent2)); color:#000; border:none;
-      padding:10px 20px; border-radius:6px; font-weight:bold; font-family:var(--mono); font-size:12px; cursor:pointer;
-      transition:transform 0.1s, box-shadow 0.2s;
-    }
-    .btn:hover{box-shadow:0 0 15px rgba(0,242,254,0.5); transform:translateY(-1px);}
+<script>
+if (window.pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+}
+</script>
 
-    .docs-loaded{font-size:11px; color:var(--muted); display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
-    .doc-pill{
-      background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.12); padding:6px 12px; border-radius:6px;
-      color:var(--text); text-decoration:none; display:inline-flex; align-items:center; gap:8px; cursor:pointer; transition:border-color 0.2s, background 0.2s;
-    }
-    .doc-pill:hover{border-color:var(--accent); background:rgba(0,242,254,0.08);}
-  </style>
- </head>
- <body>
-  <header>
-   <div class="logo">NEXUS-X // LOCAL RAG KERNEL</div>
-   <div class="status"><div class="pulse"></div><span id="sysState">Cargando repositorios y extrayendo vectores...</span></div>
-  </header>
+<style>
+:root{
+  --bg:#02040a;
+  --panel:rgba(8,15,28,.88);
+  --panel2:rgba(10,20,38,.95);
+  --stroke:rgba(0,242,254,.25);
+  --stroke2:rgba(0,242,254,.55);
+  --text:#e2e8f0;
+  --muted:#64748b;
+  --accent:#00f2fe;
+  --accent2:#4facfe;
+  --success:#39ff88;
+  --danger:#ff5577;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+}
 
-  <div class="container">
-   <div class="docs-loaded" id="docsList">
-    <span style="color:var(--accent)">Repositorios indexados:</span>
-   </div>
+*{box-sizing:border-box}
 
-   <div class="chat-box" id="chatBox">
-    <div class="msg system">>> NEXUS-X Core inicializado. Sistema autónomo listo para procesar consultas técnicas sobre los manuales y PDFs cargados. Escribe tu pregunta abajo o abre los documentos directamente arriba.</div>
-   </div>
+html,body{
+  margin:0;
+  min-height:100%;
+}
 
-   <div class="input-panel">
-    <input id="queryInput" type="text" placeholder="Ej: ¿Cuáles son las reglas de nomenclatura o componentes del PDF?" autocomplete="off">
-    <button class="btn" id="sendBtn">CONSULTAR</button>
-   </div>
+body{
+  min-height:100vh;
+  background:
+    radial-gradient(circle at 50% -20%,rgba(0,242,254,.12),transparent 40%),
+    linear-gradient(rgba(0,242,254,.025) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,242,254,.025) 1px,transparent 1px),
+    var(--bg);
+  background-size:auto,30px 30px,30px 30px;
+  color:var(--text);
+  font-family:var(--mono);
+}
+
+/* HEADER */
+
+header{
+  min-height:70px;
+  padding:14px 24px;
+  border-bottom:1px solid var(--stroke);
+  background:rgba(3,7,16,.88);
+  backdrop-filter:blur(14px);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:20px;
+  position:sticky;
+  top:0;
+  z-index:20;
+}
+
+.logo{
+  font-size:14px;
+  font-weight:800;
+  letter-spacing:2px;
+  color:var(--accent);
+  text-shadow:0 0 12px rgba(0,242,254,.5);
+}
+
+.status{
+  font-size:10px;
+  color:var(--muted);
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.pulse{
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:var(--accent);
+  box-shadow:0 0 12px var(--accent);
+  animation:blink 1.4s infinite;
+}
+
+@keyframes blink{
+  0%,100%{opacity:1}
+  50%{opacity:.25}
+}
+
+/* LAYOUT */
+
+.container{
+  width:min(1100px,94vw);
+  margin:24px auto;
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+
+/* REPOSITORY */
+
+.repository{
+  background:var(--panel);
+  border:1px solid var(--stroke);
+  border-radius:12px;
+  padding:14px;
+  box-shadow:0 15px 45px rgba(0,0,0,.35);
+}
+
+.repo-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:15px;
+  margin-bottom:12px;
+}
+
+.repo-title{
+  color:var(--accent);
+  font-size:11px;
+  letter-spacing:1px;
+}
+
+.repo-count{
+  font-size:10px;
+  color:var(--muted);
+}
+
+.docs{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+
+.doc-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  border:1px solid rgba(255,255,255,.1);
+  background:rgba(255,255,255,.025);
+  color:#cbd5e1;
+  padding:8px 10px;
+  border-radius:7px;
+  text-decoration:none;
+  font-size:10px;
+  transition:.2s;
+}
+
+.doc-pill:hover{
+  color:var(--accent);
+  border-color:var(--accent);
+  background:rgba(0,242,254,.07);
+  transform:translateY(-1px);
+}
+
+.doc-pill.selected{
+  border-color:var(--success);
+  box-shadow:0 0 15px rgba(57,255,136,.12);
+}
+
+/* CHAT */
+
+.chat-box{
+  background:var(--panel);
+  border:1px solid var(--stroke);
+  border-radius:12px;
+  padding:20px;
+  min-height:430px;
+  max-height:58vh;
+  overflow-y:auto;
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+  box-shadow:0 15px 50px rgba(0,0,0,.55);
+}
+
+.msg{
+  max-width:88%;
+  padding:12px 15px;
+  border-radius:8px;
+  font-size:12px;
+  line-height:1.65;
+  white-space:pre-wrap;
+}
+
+.msg.system{
+  align-self:flex-start;
+  color:var(--accent);
+  border:1px solid rgba(0,242,254,.18);
+  background:rgba(0,242,254,.035);
+}
+
+.msg.user{
+  align-self:flex-end;
+  color:#fff;
+  border:1px solid rgba(79,172,254,.3);
+  background:rgba(79,172,254,.09);
+}
+
+.msg.ai{
+  align-self:flex-start;
+  color:#d7dee9;
+  border:1px solid rgba(255,255,255,.09);
+  background:rgba(255,255,255,.025);
+}
+
+.msg.error{
+  color:#ff9bad;
+  border-color:rgba(255,85,119,.3);
+  background:rgba(255,85,119,.05);
+}
+
+/* RESULT CARD */
+
+.result{
+  margin-top:12px;
+  padding:12px;
+  border:1px solid rgba(57,255,136,.2);
+  background:rgba(57,255,136,.035);
+  border-radius:8px;
+}
+
+.result-title{
+  color:var(--success);
+  font-size:10px;
+  margin-bottom:8px;
+}
+
+.result-path{
+  color:#cbd5e1;
+  font-size:10px;
+  word-break:break-all;
+}
+
+.result-actions{
+  display:flex;
+  gap:8px;
+  margin-top:10px;
+  flex-wrap:wrap;
+}
+
+.open-btn{
+  display:inline-block;
+  padding:7px 10px;
+  border-radius:6px;
+  color:#001014;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  text-decoration:none;
+  font-size:10px;
+  font-weight:800;
+}
+
+/* INPUT */
+
+.input-panel{
+  background:var(--panel);
+  border:1px solid var(--stroke);
+  border-radius:12px;
+  padding:11px;
+  display:flex;
+  gap:10px;
+  align-items:center;
+}
+
+.input-panel input{
+  flex:1;
+  min-width:0;
+  background:transparent;
+  border:0;
+  outline:0;
+  color:var(--text);
+  font-family:var(--mono);
+  font-size:13px;
+}
+
+.input-panel input::placeholder{
+  color:#475569;
+}
+
+.btn{
+  border:0;
+  border-radius:7px;
+  padding:10px 17px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  color:#001014;
+  font-family:var(--mono);
+  font-weight:900;
+  font-size:10px;
+  cursor:pointer;
+}
+
+.btn:hover{
+  box-shadow:0 0 20px rgba(0,242,254,.35);
+}
+
+.btn:disabled{
+  opacity:.45;
+  cursor:not-allowed;
+}
+
+/* MOBILE */
+
+@media(max-width:650px){
+  header{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  .status{
+    width:100%;
+  }
+
+  .chat-box{
+    min-height:420px;
+  }
+
+  .input-panel{
+    flex-direction:column;
+  }
+
+  .input-panel input{
+    width:100%;
+    padding:8px;
+  }
+
+  .btn{
+    width:100%;
+  }
+
+  .msg{
+    max-width:95%;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <div class="logo">NEXUS-X // AUTONOMOUS RAG CORE</div>
+
+  <div class="status">
+    <div class="pulse"></div>
+    <span id="sysState">Inicializando núcleo...</span>
   </div>
+</header>
 
-  <script>
-    (() => {
-      'use strict';
+<main class="container">
 
-      const repository = [
-        {
-          id: "DOC-01",
-          name: "Unidad 4 - Formulación y Nomenclatura.pdf",
-          fileRef: "Unidad 4 - Formulacion y nomenclatura.pdf",
-          content: ""
-        },
-        {
-          id: "DOC-02",
-          name: "Protocolo General de Seguridad Industrial",
-          fileRef: "protocolo",
-          content: "Normas obligatorias de EPP, uso de antiparras, chalecos ignífugos, protocolos ante cortaduras o quemaduras químicas en taller y prohibición de operar maquinaria pesada sin supervisión directa."
-        }
-      ];
+  <section class="repository">
 
-      const $ = (s) => document.querySelector(s);
+    <div class="repo-head">
+      <div class="repo-title">
+        GITHUB REPOSITORY // KNOWLEDGE BASE
+      </div>
 
-      async function extractPDF(url) {
-        try {
-          const task = pdfjsLib.getDocument(url);
-          const doc = await task.promise;
-          let text = "";
-          for (let i = 1; i <= doc.numPages; i++) {
-            const page = await doc.getPage(i);
-            const content = await page.getTextContent();
-            text += " " + content.items.map(item => item.str).join(" ");
-          }
-          return text;
-        } catch(e) {
-          return "No se pudo extraer el contenido binario del PDF.";
-        }
+      <div class="repo-count" id="repoCount">
+        buscando documentos...
+      </div>
+    </div>
+
+    <div class="docs" id="docsList"></div>
+
+  </section>
+
+  <section class="chat-box" id="chatBox">
+
+    <div class="msg system">
+>> NEXUS-X CORE ONLINE.
+
+>> Motor RAG inicializando.
+>> Conectando con repositorio GitHub.
+>> Descubriendo documentos.
+>> Preparando índice semántico local.
+
+Puedes preguntar cosas como:
+
+• "¿Qué reglas de nomenclatura aparecen en el material?"
+• "Busca el documento sobre seguridad industrial."
+• "¿Dónde se explican los óxidos?"
+• "¿Qué documento habla de EPP?"
+    </div>
+
+  </section>
+
+  <section class="input-panel">
+
+    <input
+      id="queryInput"
+      type="text"
+      autocomplete="off"
+      placeholder="Consulta el conocimiento del repositorio..."
+    >
+
+    <button class="btn" id="sendBtn">
+      CONSULTAR
+    </button>
+
+  </section>
+
+</main>
+
+<script>
+(() => {
+
+"use strict";
+
+/*
+===========================================================
+ CONFIGURACIÓN GITHUB
+===========================================================
+
+CAMBIA ESTOS VALORES.
+
+Ejemplo:
+
+owner: "Proyecto"
+repo: "nexus-x"
+branch: "main"
+
+No pongas aquí una API key de OpenAI/Claude/Gemini.
+
+*/
+
+const GITHUB = {
+  owner: "TU_USUARIO",
+  repo: "TU_REPOSITORIO",
+  branch: "main"
+};
+
+
+/*
+===========================================================
+ CONFIGURACIÓN IA
+===========================================================
+
+Si tienes un backend:
+
+POST /api/chat
+
+Body:
+
+{
+  "question": "...",
+  "context": [...]
+}
+
+Respuesta:
+
+{
+  "answer": "..."
+}
+
+Si AI_ENDPOINT queda vacío, NEXUS-X utiliza
+el modo RAG local extractivo.
+*/
+
+const AI_ENDPOINT = "";
+
+
+/*
+===========================================================
+ ESTADO
+===========================================================
+*/
+
+const repository = [];
+
+const state = {
+  ready:false,
+  indexing:false,
+  documents:[],
+  chunks:[]
+};
+
+
+/*
+===========================================================
+ DOM
+===========================================================
+*/
+
+const $ = selector => document.querySelector(selector);
+
+const chatBox = $("#chatBox");
+const docsList = $("#docsList");
+const queryInput = $("#queryInput");
+const sendBtn = $("#sendBtn");
+const sysState = $("#sysState");
+const repoCount = $("#repoCount");
+
+
+/*
+===========================================================
+ UTILIDADES
+===========================================================
+*/
+
+function normalize(text){
+
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"")
+    .replace(/[^\p{L}\p{N}\s]/gu," ")
+    .replace(/\s+/g," ")
+    .trim();
+
+}
+
+
+function tokenize(text){
+
+  return normalize(text)
+    .split(" ")
+    .filter(word => word.length >= 3);
+
+}
+
+
+/*
+===========================================================
+ STOPWORDS
+===========================================================
+*/
+
+const STOPWORDS = new Set([
+
+  "que","como","para","sobre","donde","cual",
+  "cuales","del","las","los","una","uno",
+  "unos","unas","por","con","sin","entre",
+  "esta","este","estas","estos","hay",
+  "son","del","una","quiero","busca",
+  "buscar","documento","documentos",
+  "archivo","archivos","explica","explicame"
+
+]);
+
+
+function meaningfulTokens(text){
+
+  return tokenize(text)
+    .filter(x => !STOPWORDS.has(x));
+
+}
+
+
+/*
+===========================================================
+ SINÓNIMOS / EXPANSIÓN DE CONSULTA
+===========================================================
+
+Esto permite que:
+
+"protección"
+
+encuentre:
+
+"seguridad", "EPP", "antiparras", etc.
+*/
+
+const SYNONYMS = {
+
+  seguridad:[
+    "seguridad",
+    "proteccion",
+    "epp",
+    "riesgo",
+    "prevencion",
+    "industrial"
+  ],
+
+  proteccion:[
+    "proteccion",
+    "seguridad",
+    "epp",
+    "antiparras",
+    "chaleco",
+    "guantes"
+  ],
+
+  nomenclatura:[
+    "nomenclatura",
+    "formulacion",
+    "formula",
+    "nombre",
+    "compuesto",
+    "quimica"
+  ],
+
+  formulacion:[
+    "formulacion",
+    "nomenclatura",
+    "formula",
+    "compuesto"
+  ],
+
+  oxido:[
+    "oxido",
+    "oxidos",
+    "oxigeno",
+    "metal",
+    "no metal"
+  ],
+
+  epp:[
+    "epp",
+    "proteccion",
+    "antiparras",
+    "guantes",
+    "chaleco",
+    "seguridad"
+  ],
+
+  cortadura:[
+    "cortadura",
+    "herida",
+    "accidente",
+    "primeros",
+    "auxilios"
+  ],
+
+  quemadura:[
+    "quemadura",
+    "quimica",
+    "accidente",
+    "emergencia"
+  ],
+
+  taller:[
+    "taller",
+    "seguridad",
+    "maquinaria",
+    "industrial"
+  ]
+
+};
+
+
+function expandQuery(query){
+
+  const original = meaningfulTokens(query);
+  const expanded = new Set(original);
+
+  for(const word of original){
+
+    if(SYNONYMS[word]){
+
+      for(const synonym of SYNONYMS[word]){
+        expanded.add(synonym);
       }
 
-      async function initSystem() {
-        const listEl = $('#docsList');
-        for (const doc of repository) {
-          if (doc.fileRef.endsWith('.pdf')) {
-            doc.content = await extractPDF(doc.fileRef);
-          }
-          // Agregamos el botón interactivo que abre el documento directamente en una pestaña
-          listEl.innerHTML += `
-            <a href="${doc.fileRef}" target="_blank" rel="noopener" class="doc-pill">
-              <span>📄</span> ${doc.name} 
-              <span style="font-size:10px; color:var(--accent);">[ABRIR PDF]</span>
-            </a>`;
-        }
-        $('#sysState').textContent = "Núcleo neural operativo al 100%";
+    }
+
+  }
+
+  return [...expanded];
+
+}
+
+
+/*
+===========================================================
+ GITHUB API
+===========================================================
+*/
+
+async function githubRequest(url){
+
+  const response = await fetch(url);
+
+  if(!response.ok){
+
+    throw new Error(
+      `GitHub respondió HTTP ${response.status}`
+    );
+
+  }
+
+  return response.json();
+
+}
+
+
+/*
+===========================================================
+ DESCUBRIR ARCHIVOS
+===========================================================
+*/
+
+async function discoverRepository(){
+
+  const url =
+    `https://api.github.com/repos/` +
+    `${GITHUB.owner}/${GITHUB.repo}/git/trees/` +
+    `${GITHUB.branch}?recursive=1`;
+
+  const data = await githubRequest(url);
+
+  if(!data.tree){
+
+    throw new Error("GitHub no devolvió el árbol del repositorio.");
+
+  }
+
+  return data.tree.filter(item => {
+
+    if(item.type !== "blob") return false;
+
+    const path = item.path.toLowerCase();
+
+    return (
+      path.endsWith(".pdf") ||
+      path.endsWith(".txt") ||
+      path.endsWith(".md")
+    );
+
+  });
+
+}
+
+
+/*
+===========================================================
+ URLS
+===========================================================
+*/
+
+function rawURL(path){
+
+  return (
+    `https://raw.githubusercontent.com/` +
+    `${GITHUB.owner}/${GITHUB.repo}/` +
+    `${GITHUB.branch}/${path.split("/").map(encodeURIComponent).join("/")}`
+  );
+
+}
+
+
+function githubURL(path){
+
+  return (
+    `https://github.com/` +
+    `${GITHUB.owner}/${GITHUB.repo}/blob/` +
+    `${GITHUB.branch}/${path.split("/").map(encodeURIComponent).join("/")}`
+  );
+
+}
+
+
+/*
+===========================================================
+ PDF EXTRACTION
+===========================================================
+*/
+
+async function extractPDF(url){
+
+  const pdf = await pdfjsLib.getDocument(url).promise;
+
+  let pages = [];
+
+  for(let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++){
+
+    const page = await pdf.getPage(pageNumber);
+
+    const content = await page.getTextContent();
+
+    const text = content.items
+      .map(item => item.str)
+      .join(" ");
+
+    pages.push({
+      page:pageNumber,
+      text
+    });
+
+  }
+
+  return pages;
+
+}
+
+
+/*
+===========================================================
+ DOCUMENT DOWNLOAD
+===========================================================
+*/
+
+async function loadDocument(file){
+
+  const path = file.path;
+
+  const document = {
+
+    id:path,
+
+    name:path.split("/").pop(),
+
+    path,
+
+    type:path.toLowerCase().endsWith(".pdf")
+      ? "pdf"
+      : "text",
+
+    rawURL:rawURL(path),
+
+    githubURL:githubURL(path),
+
+    content:"",
+
+    pages:[]
+
+  };
+
+
+  if(document.type === "pdf"){
+
+    try{
+
+      const pages = await extractPDF(document.rawURL);
+
+      document.pages = pages;
+
+      document.content =
+        pages
+          .map(page => page.text)
+          .join(" ");
+
+    }
+    catch(error){
+
+      console.warn(
+        "No se pudo extraer:",
+        document.name,
+        error
+      );
+
+    }
+
+  }
+  else{
+
+    try{
+
+      const response = await fetch(document.rawURL);
+
+      document.content = await response.text();
+
+    }
+    catch(error){
+
+      console.warn(
+        "No se pudo descargar:",
+        document.name,
+        error
+      );
+
+    }
+
+  }
+
+
+  return document;
+
+}
+
+
+/*
+===========================================================
+ CHUNKING
+===========================================================
+*/
+
+function createChunks(document){
+
+  const text = document.content
+    .replace(/\s+/g," ")
+    .trim();
+
+  if(!text) return [];
+
+  const words = text.split(" ");
+
+  const chunkSize = 180;
+  const overlap = 35;
+
+  const chunks = [];
+
+  let index = 0;
+
+  while(index < words.length){
+
+    const chunkWords =
+      words.slice(index,index + chunkSize);
+
+    const chunkText = chunkWords.join(" ");
+
+    chunks.push({
+
+      documentId:document.id,
+
+      documentName:document.name,
+
+      documentPath:document.path,
+
+      githubURL:document.githubURL,
+
+      rawURL:document.rawURL,
+
+      text:chunkText,
+
+      tokens:meaningfulTokens(chunkText)
+
+    });
+
+    index += chunkSize - overlap;
+
+  }
+
+  return chunks;
+
+}
+
+
+/*
+===========================================================
+ SCORING
+===========================================================
+*/
+
+function scoreChunk(chunk, query){
+
+  const queryTokens = expandQuery(query);
+
+  if(!queryTokens.length) return 0;
+
+  const content = normalize(chunk.text);
+
+  let score = 0;
+
+  for(const token of queryTokens){
+
+    if(content.includes(token)){
+
+      score += 1;
+
+      /*
+      Las coincidencias largas son más importantes.
+      */
+
+      if(token.length >= 7){
+
+        score += 1;
+
       }
 
-      function appendMessage(text, sender) {
-        const box = $('#chatBox');
-        const div = document.createElement('div');
-        div.className = `msg ${sender}`;
-        div.textContent = text;
-        box.appendChild(div);
-        box.scrollTop = box.scrollHeight;
+    }
+
+  }
+
+  /*
+  Bonus por coincidencia exacta de frase.
+  */
+
+  const normalizedQuery = normalize(query);
+
+  if(
+    normalizedQuery.length > 8 &&
+    content.includes(normalizedQuery)
+  ){
+
+    score += 8;
+
+  }
+
+  return score;
+
+}
+
+
+/*
+===========================================================
+ BÚSQUEDA INTELIGENTE
+===========================================================
+*/
+
+function search(query){
+
+  const ranked = state.chunks
+
+    .map(chunk => ({
+
+      ...chunk,
+
+      score:scoreChunk(chunk,query)
+
+    }))
+
+    .filter(item => item.score > 0)
+
+    .sort((a,b) => b.score - a.score);
+
+
+  /*
+  Eliminamos duplicados por documento
+  */
+
+  const documents = [];
+
+  const seen = new Set();
+
+  for(const result of ranked){
+
+    if(!seen.has(result.documentId)){
+
+      seen.add(result.documentId);
+
+      documents.push(result);
+
+    }
+
+    if(documents.length >= 5) break;
+
+  }
+
+
+  return {
+
+    best:documents[0] || null,
+
+    results:documents
+
+  };
+
+}
+
+
+/*
+===========================================================
+ MOSTRAR REPOSITORIO
+===========================================================
+*/
+
+function renderRepository(){
+
+  docsList.innerHTML = "";
+
+  for(const document of state.documents){
+
+    const link = document.createElement("a");
+
+    link.className = "doc-pill";
+
+    link.href = document.githubURL;
+
+    link.target = "_blank";
+
+    link.rel = "noopener noreferrer";
+
+    link.dataset.id = document.id;
+
+    link.innerHTML =
+      `📄 ${escapeHTML(document.name)}`;
+
+    docsList.appendChild(link);
+
+  }
+
+  repoCount.textContent =
+    `${state.documents.length} documento(s) indexado(s)`;
+
+}
+
+
+function selectDocument(id){
+
+  document
+    .querySelectorAll(".doc-pill")
+    .forEach(element => {
+
+      element.classList.toggle(
+        "selected",
+        element.dataset.id === id
+      );
+
+    });
+
+}
+
+
+/*
+===========================================================
+ HTML SAFE
+===========================================================
+*/
+
+function escapeHTML(text){
+
+  return String(text)
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+
+}
+
+
+/*
+===========================================================
+ MENSAJES
+===========================================================
+*/
+
+function appendMessage(text,type){
+
+  const element =
+    document.createElement("div");
+
+  element.className =
+    `msg ${type}`;
+
+  element.textContent = text;
+
+  chatBox.appendChild(element);
+
+  chatBox.scrollTop =
+    chatBox.scrollHeight;
+
+  return element;
+
+}
+
+
+function appendResult(result){
+
+  if(!result) return;
+
+  const element =
+    document.createElement("div");
+
+  element.className = "msg ai";
+
+  element.innerHTML = `
+
+    <div>
+      <strong style="color:var(--success)">
+        DOCUMENTO RELACIONADO DETECTADO
+      </strong>
+    </div>
+
+    <div class="result">
+
+      <div class="result-title">
+        MATCH #1 · SCORE ${result.score}
+      </div>
+
+      <div class="result-path">
+        ${escapeHTML(result.documentPath)}
+      </div>
+
+      <div class="result-actions">
+
+        <a
+          class="open-btn"
+          href="${result.githubURL}"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          ABRIR EN GITHUB
+        </a>
+
+        <a
+          class="open-btn"
+          href="${result.rawURL}"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          ABRIR DOCUMENTO
+        </a>
+
+      </div>
+
+    </div>
+  `;
+
+  chatBox.appendChild(element);
+
+  chatBox.scrollTop =
+    chatBox.scrollHeight;
+
+  selectDocument(result.documentId);
+
+}
+
+
+/*
+===========================================================
+ RESPUESTA RAG LOCAL
+===========================================================
+*/
+
+function localAnswer(query,searchResult){
+
+  if(!searchResult.best){
+
+    return (
+      ">> NEXUS-X no encontró evidencia suficiente " +
+      "en los documentos indexados.\n\n" +
+      "Prueba utilizando términos técnicos, " +
+      "conceptos, componentes o nombres de unidades."
+    );
+
+  }
+
+
+  const best = searchResult.best;
+
+  const snippet =
+    best.text
+      .replace(/\s+/g," ")
+      .slice(0,900);
+
+
+  return (
+    `>> ANÁLISIS COMPLETADO\n\n` +
+
+    `Documento seleccionado:\n` +
+    `${best.documentName}\n\n` +
+
+    `Fragmento relevante:\n` +
+    `${snippet}\n\n` +
+
+    `>> Fuente localizada automáticamente en GitHub.`
+  );
+
+}
+
+
+/*
+===========================================================
+ IA REAL
+===========================================================
+*/
+
+async function askAI(query,searchResult){
+
+  /*
+  Si no existe backend, usamos RAG local.
+  */
+
+  if(!AI_ENDPOINT){
+
+    return localAnswer(
+      query,
+      searchResult
+    );
+
+  }
+
+
+  const context =
+    searchResult.results.map(result => ({
+
+      document:result.documentName,
+
+      path:result.documentPath,
+
+      score:result.score,
+
+      content:result.text
+
+    }));
+
+
+  const response = await fetch(
+    AI_ENDPOINT,
+    {
+      method:"POST",
+
+      headers:{
+        "Content-Type":"application/json"
+      },
+
+      body:JSON.stringify({
+
+        question:query,
+
+        context
+
+      })
+
+    }
+  );
+
+
+  if(!response.ok){
+
+    throw new Error(
+      `Servidor IA HTTP ${response.status}`
+    );
+
+  }
+
+
+  const data =
+    await response.json();
+
+
+  return data.answer ||
+    "La IA no devolvió una respuesta válida.";
+
+}
+
+
+/*
+===========================================================
+ PROCESAMIENTO
+===========================================================
+*/
+
+async function processQuery(query){
+
+  const result =
+    search(query);
+
+
+  if(!result.best){
+
+    appendMessage(
+      localAnswer(query,result),
+      "ai"
+    );
+
+    return;
+
+  }
+
+
+  appendResult(result);
+
+
+  const loading =
+    appendMessage(
+      ">> NEXUS-X está razonando sobre los fragmentos recuperados...",
+      "system"
+    );
+
+
+  try{
+
+    const answer =
+      await askAI(
+        query,
+        result
+      );
+
+
+    loading.remove();
+
+    appendMessage(
+      answer,
+      "ai"
+    );
+
+  }
+  catch(error){
+
+    loading.remove();
+
+    appendMessage(
+      `>> ERROR IA: ${error.message}\n\n` +
+      localAnswer(query,result),
+      "error"
+    );
+
+  }
+
+}
+
+
+/*
+===========================================================
+ INICIALIZACIÓN
+===========================================================
+*/
+
+async function initSystem(){
+
+  if(
+    GITHUB.owner === "TU_USUARIO" ||
+    GITHUB.repo === "TU_REPOSITORIO"
+  ){
+
+    sysState.textContent =
+      "Configuración GitHub pendiente";
+
+    repoCount.textContent =
+      "Configura owner/repo";
+
+    appendMessage(
+      ">> CONFIGURACIÓN REQUERIDA\n\n" +
+      "Edita GITHUB.owner y GITHUB.repo " +
+      "al principio del script para conectar " +
+      "NEXUS-X con tu repositorio.",
+      "error"
+    );
+
+    return;
+
+  }
+
+
+  try{
+
+    state.indexing = true;
+
+    sysState.textContent =
+      "Descubriendo repositorio GitHub...";
+
+
+    const files =
+      await discoverRepository();
+
+
+    if(!files.length){
+
+      throw new Error(
+        "No se encontraron PDFs/TXT/MD en el repositorio."
+      );
+
+    }
+
+
+    sysState.textContent =
+      `Descubiertos ${files.length} archivos. Extrayendo contenido...`;
+
+
+    for(const file of files){
+
+      try{
+
+        const document =
+          await loadDocument(file);
+
+        state.documents.push(document);
+
+        const chunks =
+          createChunks(document);
+
+        state.chunks.push(...chunks);
+
+
+        renderRepository();
+
+        repoCount.textContent =
+          `${state.documents.length}/${files.length} documentos`;
+
+      }
+      catch(error){
+
+        console.warn(
+          "Error procesando",
+          file.path,
+          error
+        );
+
       }
 
-      function processQuery(query) {
-        const qLower = query.toLowerCase();
-        let bestMatch = null;
-        let highestScore = 0;
+    }
 
-        repository.forEach(doc => {
-          const words = qLower.split(/\s+/);
-          let score = 0;
-          words.forEach(w => {
-            if (w.length > 3 && doc.content.toLowerCase().includes(w)) score++;
-          });
-          if (score > highestScore) {
-            highestScore = score;
-            bestMatch = doc;
-          }
-        });
 
-        if (!bestMatch || highestScore === 0) {
-          return ">> No se detectaron coincidencias semánticas directas en los repositorios locales indexados. Intenta reformular con términos técnicos específicos (ej: óxidos, nomenclatura, seguridad) o abre el PDF directamente arriba.";
-        }
+    state.ready = true;
 
-        const contentSample = bestMatch.content.substring(0, 350).replace(/\s+/g, ' ').trim();
-        return `>> [COINCIDENCIA ENCONTRADA: ${bestMatch.name}]\n\n"${contentSample}..."\n\n[Sugerencia: Puedes hacer clic en el botón superior "${bestMatch.name}" para ver el documento original completo].`;
-      }
+    state.indexing = false;
 
-      $('#sendBtn').addEventListener('click', () => {
-        const val = $('#queryInput').value.trim();
-        if (!val) return;
-        appendMessage(val, 'user');
-        $('#queryInput').value = '';
 
-        setTimeout(() => {
-          const response = processQuery(val);
-          appendMessage(response, 'ai');
-        }, 400);
-      });
+    sysState.textContent =
+      `Núcleo operativo · ${state.chunks.length} fragmentos indexados`;
 
-      $('#queryInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') $('#sendBtn').click();
-      });
+    repoCount.textContent =
+      `${state.documents.length} documentos · ${state.chunks.length} fragmentos`;
 
-      initSystem();
-    })();
-  </script>
- </body>
+
+    appendMessage(
+      `>> INDEXACIÓN COMPLETADA.\n\n` +
+      `Documentos: ${state.documents.length}\n` +
+      `Fragmentos: ${state.chunks.length}\n` +
+      `Motor RAG: ONLINE\n` +
+      `Resolución GitHub: ONLINE\n\n` +
+      `NEXUS-X listo para consultas.`,
+      "system"
+    );
+
+  }
+  catch(error){
+
+    state.indexing = false;
+
+    sysState.textContent =
+      "Error de conexión con GitHub";
+
+    appendMessage(
+      `>> ERROR DE INICIALIZACIÓN\n\n${error.message}`,
+      "error"
+    );
+
+  }
+
+}
+
+
+/*
+===========================================================
+ EVENTOS
+===========================================================
+*/
+
+sendBtn.addEventListener("click",async()=>{
+
+  const query =
+    queryInput.value.trim();
+
+  if(!query) return;
+
+
+  if(!state.ready){
+
+    appendMessage(
+      ">> El núcleo todavía está indexando el repositorio.",
+      "system"
+    );
+
+    return;
+
+  }
+
+
+  appendMessage(
+    query,
+    "user"
+  );
+
+
+  queryInput.value = "";
+
+  sendBtn.disabled = true;
+
+  try{
+
+    await processQuery(query);
+
+  }
+  finally{
+
+    sendBtn.disabled = false;
+
+    queryInput.focus();
+
+  }
+
+});
+
+
+queryInput.addEventListener(
+  "keydown",
+  event => {
+
+    if(event.key === "Enter"){
+
+      sendBtn.click();
+
+    }
+
+  }
+);
+
+
+initSystem();
+
+})();
+</script>
+
+</body>
 </html>
