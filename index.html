@@ -3,7 +3,7 @@
  <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>NEXUS-X // Hibrid RAG Core</title>
+  <title>NEXUS-X // Fast Hybrid RAG</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
     if (window.pdfjsLib) {
@@ -94,13 +94,13 @@
  </head>
  <body>
   <header>
-   <div class="logo">NEXUS-X // HYBRID RAG CORE</div>
-   <div class="status"><div class="pulse"></div><span id="sysState">Verificando sistema...</span></div>
+   <div class="logo">NEXUS-X // LIGHTNING RAG</div>
+   <div class="status"><div class="pulse"></div><span id="sysState">Iniciando motor liviano...</span></div>
   </header>
 
   <div class="container">
    <div class="chat-box" id="chatBox">
-    <div class="msg system">>> NEXUS-X Híbrido inicializado. Comprobando memoria interna...</div>
+    <div class="msg system">>> NEXUS-X optimizado cargando...</div>
    </div>
 
    <div class="input-panel">
@@ -126,10 +126,9 @@
       let repository = [];
       const $ = (s) => document.querySelector(s);
 
-      // Abrir base de datos local (el "tarrito" de descargas IndexedDB)
       function openDB() {
         return new Promise((resolve, reject) => {
-          const request = indexedDB.open("NexusXHybridDB", 1);
+          const request = indexedDB.open("NexusXFastDB", 1);
           request.onerror = () => reject(request.error);
           request.onsuccess = () => resolve(request.result);
           request.onupgradeneeded = (event) => {
@@ -164,42 +163,36 @@
       }
 
       async function initializeSystem() {
-        // 1. Intentar cargar primero lo que ya está guardado en el tarrito local
-        let cachedDocs = [];
+        // 1. Carga instantánea desde el tarrito local
         try {
-          cachedDocs = await getAllDocsFromCache();
+          const cachedDocs = await getAllDocsFromCache();
+          if (cachedDocs && cachedDocs.length > 0) {
+            repository = cachedDocs;
+            $('#sysState').textContent = `Modo Local (${repository.length} docs listos)`;
+            enableApp(`>> Sistema listo al instante. ${repository.length} manuales cargados desde la memoria.`);
+            return;
+          }
         } catch (e) {
-          console.log("Tarrito local vacío o no disponible.");
+          console.log("Caché vacía.");
         }
 
-        if (cachedDocs && cachedDocs.length > 0) {
-          repository = cachedDocs;
-          $('#sysState').textContent = `Modo Offline/Local (${repository.length} docs en tarrito)`;
-          enableApp(`>> Sistema operativo. Usando ${repository.length} manuales almacenados en la memoria interna.`);
-        }
-
-        // 2. Si hay internet, intentar buscar actualizaciones o bajar nuevos archivos en segundo plano
+        // 2. Si hay red, sincroniza de forma ultra rápida leyendo solo las primeras 3 páginas de cada PDF
         if (navigator.onLine) {
           try {
-            $('#sysState').textContent = "Sincronizando con la nube...";
-            
-            // Intentamos leer el listado automático que genera GitHub Pages en el directorio raíz
+            $('#sysState').textContent = "Sincronizando archivos...";
             const res = await fetch('./');
             if (res.ok) {
               const htmlText = await res.text();
               const parser = new DOMParser();
               const docHtml = parser.parseFromString(htmlText, 'text/html');
               
-              // Extraemos todos los links que terminen en .pdf de la página del repositorio
               const links = Array.from(docHtml.querySelectorAll('a'))
                 .map(a => a.getAttribute('href'))
                 .filter(href => href && href.toLowerCase().endsWith('.pdf'));
 
-              let downloadedCount = 0;
+              let newDocs = [];
               for (const pdfLink of links) {
-                // Si ya lo tenemos y pesa igual, podemos saltarlo o refrescarlo
                 const fileName = decodeURIComponent(pdfLink.split('/').pop());
-                
                 try {
                   const pdfRes = await fetch(pdfLink);
                   if (!pdfRes.ok) continue;
@@ -208,50 +201,41 @@
                   const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
                   const pdfDoc = await loadingTask.promise;
                   let text = "";
-                  const maxPages = Math.min(pdfDoc.numPages, 15);
+                  
+                  // OPTIMIZACIÓN CRÍTICA: Solo lee las primeras 3 páginas para no colgar la netbook
+                  const maxPages = Math.min(pdfDoc.numPages, 3);
                   for (let i = 1; i <= maxPages; i++) {
                     const page = await pdfDoc.getPage(i);
                     const content = await page.getTextContent();
                     text += " " + content.items.map(item => item.str).join(" ");
                   }
 
-                  const docObj = {
+                  newDocs.push({
                     id: fileName,
                     name: fileName,
                     blobData: arrayBuffer,
                     content: text
-                  };
-
-                  // Guardar en el tarrito local
-                  await saveDocsToCache([docObj]);
-                  
-                  // Actualizar memoria RAM activa
-                  const existingIndex = repository.findIndex(d => d.id === fileName);
-                  if (existingIndex >= 0) {
-                    repository[existingIndex] = docObj;
-                  } else {
-                    repository.push(docObj);
-                  }
-                  downloadedCount++;
+                  });
                 } catch (err) {
-                  console.warn(`No se pudo descargar ${fileName}`);
+                  console.warn(`Error procesando ${fileName}`);
                 }
               }
 
-              if (downloadedCount > 0 && repository.length > 0) {
+              if (newDocs.length > 0) {
+                repository = newDocs;
+                await saveDocsToCache(newDocs);
                 $('#sysState').textContent = "Sincronizado (Online)";
-                appendMessage(`>> Sincronización completada. ${downloadedCount} manuales actualizados/guardados en el tarrito.`, 'system');
+                enableApp(`>> Sincronización ultrarrápida completa. ${repository.length} manuales listos.`);
+                return;
               }
             }
           } catch (netErr) {
-            console.log("Fallo de red secundario, operando con caché local.");
+            console.log("Error de red.");
           }
         }
 
-        if (repository.length === 0) {
-          $('#sysState').textContent = "Sin red / Sin caché";
-          appendMessage(`>> ADVERTENCIA: La memoria interna está vacía y no hay internet. Conectá la netbook unos minutos para bajar los manuales por primera vez.`, "error");
-        }
+        $('#sysState').textContent = "Sin red / Sin caché";
+        appendMessage(`>> ADVERTENCIA: La memoria interna está vacía y no hay internet. Conectá la netbook un momento para descargar los manuales.`, "error");
       }
 
       function enableApp(systemMsg) {
@@ -270,14 +254,13 @@
         return div;
       }
 
-      // Buscador flexible por palabras sueltas en la memoria local
       function processQuery(query) {
-        if (repository.length === 0) return { text: ">> Sin documentos en la memoria local.", doc: null };
+        if (repository.length === 0) return { text: ">> Sin documentos en la memoria.", doc: null };
 
         const qLower = query.toLowerCase();
         const searchWords = qLower.split(/\s+/).filter(w => w.length > 2);
         
-        if (searchWords.length === 0) return { text: ">> Escribe palabras clave más largas para realizar la búsqueda.", doc: null };
+        if (searchWords.length === 0) return { text: ">> Escribe palabras clave más largas.", doc: null };
 
         let bestMatch = null;
         let highestScore = 0;
@@ -289,9 +272,7 @@
           searchWords.forEach(word => {
             const regex = new RegExp(word, 'g');
             const matches = contentLower.match(regex);
-            if (matches) {
-              score += matches.length * 2;
-            }
+            if (matches) score += matches.length * 2;
           });
 
           if (score > highestScore) {
@@ -301,16 +282,16 @@
         });
 
         if (!bestMatch || highestScore === 0) {
-          return { text: ">> No se encontraron coincidencias para esas palabras en los manuales indexados.", doc: null };
+          return { text: ">> No se encontraron coincidencias para esas palabras.", doc: null };
         }
 
         const contentLower = bestMatch.content.toLowerCase();
         let index = contentLower.indexOf(searchWords[0]);
         if (index === -1) index = 0;
         const start = Math.max(0, index - 60);
-        const snippet = bestMatch.content.substring(start, start + 350).replace(/\s+/g, ' ').trim();
+        const snippet = bestMatch.content.substring(start, start + 300).replace(/\s+/g, ' ').trim();
 
-        return { text: `>> COINCIDENCIA ENCONTRADA (Puntaje: ${highestScore})\n\n"...${snippet}..."`, doc: bestMatch };
+        return { text: `>> COINCIDENCIA ENCONTRADA\n\n"...${snippet}..."`, doc: bestMatch };
       }
 
       function handleQuerySubmission() {
@@ -329,9 +310,9 @@
             const card = document.createElement('div');
             card.className = 'doc-action-card';
             card.innerHTML = `
-              <div class="doc-action-title">📄 ARCHIVO FUENTE: ${result.doc.name}</div>
+              <div class="doc-action-title">📄 ARCHIVO: ${result.doc.name}</div>
               <button class="open-btn">
-                <span>📂</span> ABRIR DESDE EL TARRITO LOCAL
+                <span>📂</span> ABRIR LECTOR INTERNO
               </button>
             `;
             aiMsg.appendChild(card);
@@ -345,7 +326,7 @@
           box.scrollTop = box.scrollHeight;
           $('#sendBtn'].disabled = false;
           $('#queryInput').focus();
-        }, 100);
+        }, 50);
       }
 
       async function openOfflinePDFViewer(doc) {
@@ -357,16 +338,16 @@
           const pdfDoc = await loadingTask.promise;
           const page = await pdfDoc.getPage(1);
 
-          const canvas = document.getElementById('pdfCanvas');
-          const context = canvas.getContext('2d');
-          const viewport = page.getViewport({ scale: 1.5 });
+            const canvas = document.getElementById('pdfCanvas');
+            const context = canvas.getContext('2d');
+            const viewport = page.getViewport({ scale: 1.2 }); // Escala reducida para que renderice al instante
 
-          canvas.height = viewport.height;
-          canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
 
-          await page.render({ canvasContext: context, viewport: viewport }).promise;
+            await page.render({ canvasContext: context, viewport: viewport }).promise;
         } catch (e) {
-          console.error("Error al renderizar el PDF:", e);
+          console.error("Error al renderizar:", e);
         }
       }
 
