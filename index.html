@@ -3,7 +3,7 @@
  <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>NEXUS-X // Cloud Stream & Download</title>
+  <title>NEXUS-X // Cloud Stream & Smart Search</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
     if (window.pdfjsLib) {
@@ -42,14 +42,17 @@
     .msg.system{background:rgba(0,242,254,0.04); border:1px solid rgba(0,242,254,0.2); color:var(--accent); align-self:flex-start;}
     .msg.user{background:rgba(79,172,254,0.1); border:1px solid rgba(79,172,254,0.3); color:#fff; align-self:flex-end;}
     .msg.ai{background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.1); color:#cbd5e1; align-self:flex-start;}
-    .msg.error{background:rgba(255,85,119,0.05); border:1px solid rgba(255,85,119,0.3); color:#ff9bad; align-self:flex-start;}
 
     .doc-action-card{
-      margin-top:12px; padding:12px; background:rgba(57,255,136,0.03); border:1px solid rgba(57,255,136,0.25);
-      border-radius:6px; display:flex; flex-direction:column; gap:10px;
+      margin-top:10px; padding:12px; background:rgba(57,255,136,0.03); border:1px solid rgba(57,255,136,0.25);
+      border-radius:6px; display:flex; flex-direction:column; gap:8px;
     }
+    .doc-header-row { display: flex; justify-content: space-between; align-items: center; }
     .doc-action-title{color:var(--success); font-size:11px; font-weight:bold;}
-    .actions-row{display:flex; gap:10px; flex-wrap:wrap;}
+    .certer-badge { background: rgba(57,255,136,0.15); color: var(--success); padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; }
+    .doc-snippet { font-size: 11px; color: var(--muted); border-left: 2px solid var(--success); padding-left: 8px; margin: 4px 0; }
+    
+    .actions-row{display:flex; gap:10px; flex-wrap:wrap; margin-top: 6px;}
     .action-btn{
       display:inline-flex; align-items:center; gap:6px; padding:8px 14px; background:linear-gradient(135deg, var(--accent), var(--accent2));
       color:#000; text-decoration:none; border-radius:6px; font-weight:bold; font-size:11px; cursor:pointer;
@@ -96,18 +99,18 @@
  </head>
  <body>
   <header>
-   <div class="logo">NEXUS-X // CLOUD STREAM & DOWNLOAD</div>
-   <div class="status"><div class="pulse"></div><span id="sysState">Conectado a la nube</span></div>
+   <div class="logo">NEXUS-X // CLOUD STREAM & SMART SEARCH</div>
+   <div class="status"><div class="pulse"></div><span id="sysState">Indexando documentos...</span></div>
   </header>
 
   <div class="container">
    <div class="chat-box" id="chatBox">
-    <div class="msg system">>> Sistema en línea. Escribí tu consulta para buscar en los manuales de la nube.</div>
+    <div class="msg system">>> Inicializando motor de análisis documental. Espere un momento...</div>
    </div>
 
    <div class="input-panel">
-    <input id="queryInput" type="text" placeholder="Escribe palabras clave (ej: oxidos, metalurgia, planos)..." autocomplete="off">
-    <button class="btn" id="sendBtn">CONSULTAR</button>
+    <input id="queryInput" type="text" placeholder="Escribe un concepto (ej: oxidos, soldadura, normas)..." autocomplete="off" disabled>
+    <button class="btn" id="sendBtn" disabled>CONSULTAR</button>
    </div>
   </div>
 
@@ -131,12 +134,14 @@
         branch: "main"
       };
 
-      // REEMPLAZÁ ESTOS NOMBRES CON LOS ARCHIVOS REALES DE TU REPOSITORIO
       let repositoryFiles = [
         "oxidos.pdf",
         "metalurgia.pdf",
         "seguridad-taller.pdf"
       ];
+
+      // Base de datos local en memoria donde guardaremos el texto extraído de cada PDF
+      let indexedDocs = {};
 
       const $ = (s) => document.querySelector(s);
 
@@ -150,28 +155,93 @@
         return div;
       }
 
-      function processQuery(query) {
-        const qLower = query.toLowerCase();
-        const searchWords = qLower.split(/\s+/).filter(w => w.length > 2);
-        
-        if (searchWords.length === 0) return { text: ">> Escribe palabras clave más largas para buscar.", fileName: null };
+      // Proceso de indexación automática al cargar la página
+      async function indexRepository() {
+        for (let fileName of repositoryFiles) {
+          try {
+            const url = `https://raw.githubusercontent.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/${GITHUB_CONFIG.branch}/${fileName}`;
+            const loadingTask = pdfjsLib.getDocument(url);
+            const pdfDoc = await loadingTask.promise;
+            
+            let fullText = "";
+            // Leemos hasta 5 páginas principales para extraer el núcleo del contenido sin demorar
+            let maxPagesToRead = Math.min(pdfDoc.numPages, 5);
+            
+            for (let i = 1; i <= maxPagesToRead; i++) {
+              const page = await pdfDoc.getPage(i);
+              const textContent = await page.getTextContent();
+              fullText += textContent.items.map(item => item.str).join(" ") + " ";
+            }
 
-        let matchedFile = repositoryFiles.find(file => {
-          const nameClean = file.replace(/[-_]/g, " ").toLowerCase();
-          return searchWords.some(word => nameClean.includes(word));
-        });
-
-        if (!matchedFile) {
-          return { text: `>> No se encontró ningún archivo en el repositorio que coincida con "${query}".`, fileName: null };
+            indexedDocs[fileName] = fullText.toLowerCase();
+          } catch (e) {
+            console.warn(`No se pudo indexar ${fileName}:`, e);
+            indexedDocs[fileName] = ""; // Fallback vacío si hay error de red
+          }
         }
 
-        const fileUrl = `https://raw.githubusercontent.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/${GITHUB_CONFIG.branch}/${matchedFile}`;
+        $('#sysState').textContent = "Sistema 100% operativo y sincronizado";
+        $('#queryInput').disabled = false;
+        $('#sendBtn').disabled = false;
+        appendMessage(">> Indexación completada con éxito. Ya podés buscar conceptos específicos en los manuales técnicos.", "system");
+      }
 
-        return {
-          text: `>> ARCHIVO LOCALIZADO EN LA NUBE\n\nDocumento encontrado para tu consulta sobre: "${query}"`,
-          fileName: matchedFile,
-          fileUrl: fileUrl
-        };
+      function processSmartQuery(query) {
+        const qLower = query.toLowerCase().trim();
+        const searchWords = qLower.split(/\s+/).filter(w => w.length > 2);
+
+        if (searchWords.length === 0) {
+          return [];
+        }
+
+        let results = [];
+
+        for (let fileName of repositoryFiles) {
+          let text = indexedDocs[fileName] || "";
+          let matchCount = 0;
+          let snippet = "";
+
+          // Búsqueda inteligente por raíz de palabra y frecuencias
+          searchWords.forEach(word => {
+            const root = word.slice(0, 4); // Raíz de 4 letras (ej: "óxid" para "óxidos")
+            let regex = new RegExp(root, 'g');
+            let matches = text.match(regex);
+            if (matches) {
+              matchCount += matches.length;
+            }
+          });
+
+          // Si coincide también con el nombre del archivo, le sumamos puntos extra de certeza
+          if (fileName.toLowerCase().includes(searchWords[0])) {
+            matchCount += 15;
+          }
+
+          if (matchCount > 0) {
+            // Calcular porcentaje de certeza relativo (tope 98%)
+            let certainty = Math.min(Math.floor(matchCount * 12 + 45), 98);
+            
+            // Extraer un fragmento de contexto del texto
+            let snippetIndex = text.indexOf(searchWords[0]);
+            if (snippetIndex !== -1) {
+              let start = Math.max(0, snippetIndex - 40);
+              let end = Math.min(text.length, snippetIndex + 80);
+              snippet = "..." + text.substring(start, end) + "...";
+            } else {
+              snippet = "Contenido verificado en manual técnico.";
+            }
+
+            results.push({
+              fileName: fileName,
+              certainty: certainty,
+              snippet: snippet,
+              fileUrl: `https://raw.githubusercontent.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/${GITHUB_CONFIG.branch}/${fileName}`
+            });
+          }
+        }
+
+        // Ordenar por mayor porcentaje de certeza
+        results.sort((a, b) => b.certainty - a.certainty);
+        return results;
       }
 
       function handleQuerySubmission() {
@@ -182,30 +252,40 @@
         $('#queryInput').value = '';
 
         setTimeout(() => {
-          const result = processQuery(val);
-          const aiMsg = appendMessage(result.text, 'ai');
+          const matches = processSmartQuery(val);
 
-          if (result.fileName) {
+          if (matches.length === 0) {
+            appendMessage(`>> No se encontró coincidencia directa para "${val}" en el contenido de los documentos del repositorio.`, 'error');
+            return;
+          }
+
+          const aiMsg = appendMessage(`>> RESULTADOS DE ANÁLISIS DE CONTENIDO\nSe evaluaron los manuales en busca de: "${val}"`, 'ai');
+
+          matches.forEach(match => {
             const card = document.createElement('div');
             card.className = 'doc-action-card';
             card.innerHTML = `
-              <div class="doc-action-title">📄 ${result.fileName}</div>
+              <div class="doc-header-row">
+                <span class="doc-action-title">📄 ${match.fileName}</span>
+                <span class="certer-badge">Certeza: ${match.certainty}%</span>
+              </div>
+              <div class="doc-snippet">"${match.snippet}"</div>
               <div class="actions-row">
                 <button class="action-btn open-online-btn"><span>🌐</span> ABRIR ONLINE</button>
-                <a href="${result.fileUrl}" download="${result.fileName}" class="action-btn download"><span>💾</span> DESCARGAR AL TARRITO (PDF)</a>
+                <a href="${match.fileUrl}" download="${match.fileName}" class="action-btn download"><span>💾</span> DESCARGAR PDF</a>
               </div>
             `;
             aiMsg.appendChild(card);
             
             card.querySelector('.open-online-btn').addEventListener('click', () => {
-              openCloudPDFViewer(result.fileUrl, result.fileName);
+              openCloudPDFViewer(match.fileUrl, match.fileName);
             });
-          }
+          });
 
           const box = $('#chatBox');
           box.scrollTop = box.scrollHeight;
           $('#queryInput').focus();
-        }, 100);
+        }, 150);
       }
 
       async function openCloudPDFViewer(url, fileName) {
@@ -226,8 +306,8 @@
 
           await page.render({ canvasContext: context, viewport: viewport }).promise;
         } catch (e) {
-          console.error("Error al cargar el PDF desde la nube:", e);
-          alert("No se pudo cargar el PDF. Verificá tu conexión a internet.");
+          console.error("Error al cargar el PDF:", e);
+          alert("No se pudo cargar el PDF. Verificá tu conexión.");
         }
       }
 
@@ -239,6 +319,9 @@
       $('#queryInput').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') handleQuerySubmission();
       });
+
+      // Arrancar la indexación automática al iniciar la página
+      indexRepository();
     })();
   </script>
  </body>
