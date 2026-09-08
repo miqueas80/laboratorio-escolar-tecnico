@@ -3,7 +3,7 @@
  <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>NEXUS-X // QUANTUM CORE v5.2</title>
+  <title>NEXUS-X // QUANTUM CORE v5.3</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
     if (window.pdfjsLib) {
@@ -335,39 +335,25 @@
         }
       }
 
-      // FUNCIÓN ACTUALIZADA CON MODELO GEMINI 2.5
+      // ENDPOINT ESTABLE USANDO LA VERSIÓN V1 DE LA API Y GEMINI 1.5 FLASH
       async function callGeminiAPI(prompt, key) {
-        const candidateModels = [
-          "gemini-2.5-flash",
-          "gemini-2.5-pro",
-          "gemini-1.5-flash"
-        ];
+        const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${key}`;
+        
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ 
+            contents: [{ parts: [{ text: prompt }] }] 
+          })
+        });
 
-        let lastErr = "";
+        const data = await res.json().catch(() => ({}));
 
-        for (const modelName of candidateModels) {
-          try {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${key}`;
-            const res = await fetch(url, {
-              method: 'POST',
-              headers: {'Content-Type': 'application/json'},
-              body: JSON.stringify({ 
-                contents: [{ parts: [{ text: prompt }] }] 
-              })
-            });
-
-            const data = await res.json().catch(() => ({}));
-
-            if (res.ok) {
-              return data.candidates?.[0]?.content?.parts?.[0]?.text || "No obtuve respuesta del modelo.";
-            }
-
-            lastErr = data.error?.message || `HTTP ${res.status}`;
-          } catch (e) {
-            lastErr = e.message;
-          }
+        if (!res.ok) {
+          throw new Error(data.error?.message || `HTTP ${res.status}`);
         }
-        throw new Error(lastErr || "No se pudo conectar con ningún endpoint de Gemini.");
+
+        return data.candidates?.[0]?.content?.parts?.[0]?.text || "No obtuve respuesta del modelo.";
       }
 
       async function handleModalAIQuery() {
