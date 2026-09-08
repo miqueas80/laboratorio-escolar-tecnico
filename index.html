@@ -14,7 +14,7 @@
     :root{
       --bg:#02040a; --panel:rgba(8, 15, 28, 0.85); --stroke:rgba(0, 242, 254, 0.25);
       --text:#e2e8f0; --muted:#64748b; --accent:#00f2fe; --accent2:#4facfe;
-      --mono:ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+      --success:#39ff88; --mono:ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
     }
     *{box-sizing:border-box;}
     body{
@@ -35,14 +35,26 @@
     
     .chat-box{
       flex:1; background:var(--panel); border:1px solid var(--stroke); border-radius:12px;
-      padding:20px; overflow-y:auto; max-height:55vh; min-height:350px; display:flex; flex-direction:column; gap:16px;
+      padding:20px; overflow-y:auto; max-height:65vh; min-height:420px; display:flex; flex-direction:column; gap:16px;
       box-shadow:0 10px 30px rgba(0,0,0,0.8);
     }
-    .msg{padding:12px 16px; border-radius:8px; font-size:13px; line-height:1.5; max-width:85%; white-space: pre-line;}
-    .msg.system{background:rgba(0,242,254,0.05); border:1px solid rgba(0,242,254,0.2); color:var(--accent); align-self:flex-start;}
+    .msg{padding:14px 18px; border-radius:8px; font-size:13px; line-height:1.6; max-width:88%; white-space: pre-line;}
+    .msg.system{background:rgba(0,242,254,0.04); border:1px solid rgba(0,242,254,0.2); color:var(--accent); align-self:flex-start;}
     .msg.user{background:rgba(79,172,254,0.1); border:1px solid rgba(79,172,254,0.3); color:#fff; align-self:flex-end;}
     .msg.ai{background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.1); color:#cbd5e1; align-self:flex-start;}
     .msg.error{background:rgba(255,85,119,0.05); border:1px solid rgba(255,85,119,0.3); color:#ff9bad; align-self:flex-start;}
+
+    .doc-action-card{
+      margin-top:12px; padding:12px; background:rgba(57,255,136,0.03); border:1px solid rgba(57,255,136,0.25);
+      border-radius:6px; display:flex; flex-direction:column; gap:8px;
+    }
+    .doc-action-title{color:var(--success); font-size:11px; font-weight:bold;}
+    .open-btn{
+      display:inline-flex; align-items:center; gap:8px; padding:8px 14px; background:linear-gradient(135deg, var(--accent), var(--accent2));
+      color:#000; text-decoration:none; border-radius:6px; font-weight:bold; font-size:11px; width:fit-content;
+      box-shadow:0 0 10px rgba(0,242,254,0.3); transition:transform 0.1s;
+    }
+    .open-btn:hover{transform:translateY(-1px); box-shadow:0 0 15px rgba(0,242,254,0.6);}
 
     .input-panel{
       background:var(--panel); border:1px solid var(--stroke); border-radius:12px; padding:12px;
@@ -56,34 +68,24 @@
       padding:10px 20px; border-radius:6px; font-weight:bold; font-family:var(--mono); font-size:12px; cursor:pointer;
       transition:transform 0.1s, box-shadow 0.2s;
     }
-    .btn:hover{box-shadow:0 0 15px rgba(0,242,254,0.5); transform:translateY(-1px);}
-
-    .docs-loaded{font-size:11px; color:var(--muted); display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
-    .doc-pill{
-      background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.12); padding:6px 12px; border-radius:6px;
-      color:var(--text); text-decoration:none; display:inline-flex; align-items:center; gap:8px; cursor:pointer; transition:border-color 0.2s, background 0.2s;
-    }
-    .doc-pill:hover{border-color:var(--accent); background:rgba(0,242,254,0.08);}
+    .btn:disabled{opacity:0.5; cursor:not-allowed;}
+    .btn:hover:not(:disabled){box-shadow:0 0 15px rgba(0,242,254,0.5); transform:translateY(-1px);}
   </style>
  </head>
  <body>
   <header>
    <div class="logo">NEXUS-X // LOCAL RAG KERNEL</div>
-   <div class="status"><div class="pulse"></div><span id="sysState">Escaneando repositorio en GitHub...</span></div>
+   <div class="status"><div class="pulse"></div><span id="sysState">Escaneando repositorio...</span></div>
   </header>
 
   <div class="container">
-   <div class="docs-loaded" id="docsList">
-    <span style="color:var(--accent)">Repositorios indexados:</span>
-   </div>
-
    <div class="chat-box" id="chatBox">
-    <div class="msg system">>> NEXUS-X Core inicializado. Buscando documentos automáticamente en el repositorio...</div>
+    <div class="msg system">>> NEXUS-X Core inicializado. Sincronizando documentos del repositorio técnico... Escribe tu consulta abajo.</div>
    </div>
 
    <div class="input-panel">
-    <input id="queryInput" type="text" placeholder="Escribe tu consulta técnica sobre los documentos..." autocomplete="off">
-    <button class="btn" id="sendBtn">CONSULTAR</button>
+    <input id="queryInput" type="text" placeholder="Ej: ¿Qué dice sobre los óxidos, nomenclatura o normas de seguridad?" autocomplete="off" disabled>
+    <button class="btn" id="sendBtn" disabled>CONSULTAR</button>
    </div>
   </div>
 
@@ -118,7 +120,6 @@
       }
 
       async function discoverAndIndexFiles() {
-        const listEl = $('#docsList');
         const treeUrl = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/git/trees/${GITHUB_CONFIG.branch}?recursive=1`;
 
         try {
@@ -130,7 +131,7 @@
 
           if (pdfFiles.length === 0) {
             $('#sysState').textContent = "No se encontraron PDFs";
-            appendMessage(">> ADVERTENCIA: No se detectaron archivos .pdf en el repositorio de GitHub.", "error");
+            appendMessage(">> ADVERTENCIA: No se detectaron archivos .pdf en el repositorio.", "error");
             return;
           }
 
@@ -141,7 +142,7 @@
             const githubViewUrl = `https://github.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/blob/${GITHUB_CONFIG.branch}/${file.path}`;
             const fileName = file.path.split('/').pop();
 
-            $('#sysState').textContent = `Extrayendo: ${fileName}`;
+            $('#sysState').textContent = `Leyendo: ${fileName}`;
             const textContent = await extractPDF(rawUrl);
 
             repository.push({
@@ -150,20 +151,17 @@
               fileRef: githubViewUrl,
               content: textContent
             });
-
-            listEl.innerHTML += `
-              <a href="${githubViewUrl}" target="_blank" rel="noopener" class="doc-pill">
-                <span>📄</span> ${fileName} 
-                <span style="font-size:10px; color:var(--accent);">[ABRIR]</span>
-              </a>`;
           }
 
           $('#sysState').textContent = "Núcleo neural operativo al 100%";
-          appendMessage(`>> Sincronización exitosa. Se indexaron ${repository.length} documentos automáticamente desde GitHub.`, "system");
+          $('#queryInput').disabled = false;
+          $('#sendBtn').disabled = false;
+          
+          appendMessage(`>> Indexación autónoma completada con éxito.\n>> Se procesaron ${repository.length} documentos del repositorio técnico.\n>> Pregúntame lo que necesites encontrar.`, "system");
 
         } catch (err) {
           $('#sysState').textContent = "Error de indexación";
-          appendMessage(`>> Error al escanear GitHub: ${err.message}. Comprueba tu conexión o que el repositorio sea público.`, "error");
+          appendMessage(`>> Error al conectar con GitHub: ${err.message}. Comprueba tu red.`, "error");
         }
       }
 
@@ -174,11 +172,12 @@
         div.textContent = text;
         box.appendChild(div);
         box.scrollTop = box.scrollHeight;
+        return div;
       }
 
       function processQuery(query) {
         if (repository.length === 0) {
-          return ">> No hay documentos indexados en este momento para procesar la consulta.";
+          return { text: ">> No hay documentos indexados en este momento.", doc: null };
         }
 
         const qLower = query.toLowerCase();
@@ -189,7 +188,7 @@
           const words = qLower.split(/\s+/);
           let score = 0;
           words.forEach(w => {
-            if (w.length > 3 && doc.content.toLowerCase().includes(w)) score++;
+            if (w.length > 3 && doc.content.toLowerCase().includes(w)) score += 2;
           });
           if (score > highestScore) {
             highestScore = score;
@@ -198,27 +197,59 @@
         });
 
         if (!bestMatch || highestScore === 0) {
-          return ">> No se detectaron coincidencias directas en los PDFs indexados. Prueba usando palabras clave más específicas que aparezcan en los manuales.";
+          return { 
+            text: ">> No se detectaron coincidencias exactas para esa consulta en los manuales indexados. Prueba buscando conceptos específicos (ej: nomenclatura, óxidos, seguridad, epp).", 
+            doc: null 
+          };
         }
 
-        const contentSample = doc.content ? bestMatch.content.substring(0, 400).replace(/\s+/g, ' ').trim() : "Contenido no disponible.";
-        return `>> [COINCIDENCIA ENCONTRADA EN: ${bestMatch.name}]\n\n"${contentSample}..."\n\n[Acción: Haz clic arriba en el botón del archivo "${bestMatch.name}" para ver el documento completo].`;
+        // Extraemos un fragmento relevante alrededor de la primera coincidencia clave
+        const contentLower = bestMatch.content.toLowerCase();
+        const firstWord = qLower.split(/\s+/).find(w => w.length > 3) || "";
+        let index = contentLower.indexOf(firstWord);
+        if (index === -1) index = 0;
+
+        const snippet = bestMatch.content.substring(index, index + 350).replace(/\s+/g, ' ').trim();
+
+        const responseText = `>> COINCIDENCIA ENCONTRADA\n\n"${snippet}..."`;
+        return { text: responseText, doc: bestMatch };
       }
 
-      $('#sendBtn').addEventListener('click', () => {
+      function handleQuerySubmission() {
         const val = $('#queryInput').value.trim();
         if (!val) return;
+        
         appendMessage(val, 'user');
         $('#queryInput').value = '';
+        $('#sendBtn').disabled = true;
 
         setTimeout(() => {
-          const response = processQuery(val);
-          appendMessage(response, 'ai');
-        }, 300);
-      });
+          const result = processQuery(val);
+          const aiMsg = appendMessage(result.text, 'ai');
 
+          // Si encontró un documento relacionado, le inyectamos la tarjeta interactiva con el botón para abrir el PDF
+          if (result.doc) {
+            const card = document.createElement('div');
+            card.className = 'doc-action-card';
+            card.innerHTML = `
+              <div class="doc-action-title">📄 ARCHIVO FUENTE: ${result.doc.name}</div>
+              <a href="${result.doc.fileRef}" target="_blank" rel="noopener" class="open-btn">
+                <span>📂</span> ABRIR PDF ORIGINAL
+              </a>
+            `;
+            aiMsg.appendChild(card);
+          }
+
+          const box = $('#chatBox');
+          box.scrollTop = box.scrollHeight;
+          $('#sendBtn').disabled = false;
+          $('#queryInput').focus();
+        }, 400);
+      }
+
+      $('#sendBtn').addEventListener('click', handleQuerySubmission);
       $('#queryInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') $('#sendBtn').click();
+        if (e.key === 'Enter') handleQuerySubmission();
       });
 
       discoverAndIndexFiles();
