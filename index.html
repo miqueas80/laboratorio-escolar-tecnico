@@ -3,7 +3,7 @@
  <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>NEXUS-X // Cloud Stream & Smart Search</title>
+  <title>NEXUS-X // Cloud Stream & AI Assistant</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
     if (window.pdfjsLib) {
@@ -62,10 +62,11 @@
     .action-btn.download{background:linear-gradient(135deg, #39ff88, #00b0ff); color:#000;}
     .action-btn:hover{transform:translateY(-1px); box-shadow:0 0 15px rgba(0,242,254,0.6);}
 
+    /* MODAL DEL VISOR CON IA INTEGRADA */
     #pdfViewerModal {
       display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-      background: rgba(2, 4, 10, 0.9); z-index: 1000; backdrop-filter: blur(8px);
-      flex-direction: column; padding: 20px;
+      background: rgba(2, 4, 10, 0.92); z-index: 1000; backdrop-filter: blur(8px);
+      flex-direction: column; padding: 15px;
     }
     .viewer-header {
       display: flex; justify-content: space-between; align-items: center;
@@ -76,11 +77,26 @@
       background: #ff5577; color: #fff; border: none; padding: 6px 12px;
       border-radius: 4px; cursor: pointer; font-family: var(--mono); font-weight: bold; font-size: 11px;
     }
-    .viewer-body {
-      flex: 1; background: #0b1329; border: 1px solid var(--stroke); border-top: none;
-      border-radius: 0 0 8px 8px; overflow: auto; display: flex; justify-content: center; padding: 20px;
+    .viewer-layout {
+      flex: 1; display: flex; gap: 15px; background: #0b1329; border: 1px solid var(--stroke); border-top: none;
+      border-radius: 0 0 8px 8px; overflow: hidden; padding: 15px;
     }
+    .viewer-canvas-pane { flex: 2; overflow: auto; display: flex; justify-content: center; align-items: flex-start; background: rgba(0,0,0,0.3); border-radius: 6px; padding: 10px; }
     canvas { max-width: 100%; box-shadow: 0 0 20px rgba(0,0,0,0.8); background: white; }
+
+    /* PANEL LATERAL DE LA IA */
+    .viewer-ai-pane {
+      flex: 1; background: rgba(4, 9, 18, 0.95); border: 1px solid var(--stroke); border-radius: 6px;
+      display: flex; flex-direction: column; padding: 12px; gap: 10px; max-width: 380px;
+    }
+    .ai-pane-title { font-size: 11px; color: var(--success); font-weight: bold; border-bottom: 1px solid var(--stroke); padding-bottom: 6px; }
+    .ai-chat-history { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; font-size: 11px; padding-right: 4px; }
+    .ai-msg { padding: 8px 10px; border-radius: 6px; line-height: 1.4; white-space: pre-line; }
+    .ai-msg.bot { background: rgba(0,242,254,0.06); border: 1px solid rgba(0,242,254,0.2); color: #cbd5e1; }
+    .ai-msg.user { background: rgba(79,172,254,0.1); border: 1px solid rgba(79,172,254,0.3); color: #fff; align-self: flex-end; }
+    .ai-input-row { display: flex; gap: 6px; }
+    .ai-input-row input { flex: 1; background: rgba(0,0,0,0.5); border: 1px solid var(--stroke); border-radius: 4px; padding: 6px 8px; color: var(--text); font-family: var(--mono); font-size: 11px; outline: none; }
+    .ai-send-btn { background: var(--accent); color: #000; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; font-family: var(--mono); font-size: 11px; cursor: pointer; }
 
     .input-panel{
       background:var(--panel); border:1px solid var(--stroke); border-radius:12px; padding:12px;
@@ -100,28 +116,41 @@
  </head>
  <body>
   <header>
-   <div class="logo">NEXUS-X // CLOUD STREAM & SMART SEARCH</div>
-   <div class="status"><div class="pulse"></div><span id="sysState">Indexando documentos...</span></div>
+   <div class="logo">NEXUS-X // CLOUD STREAM & AI ASSISTANT</div>
+   <div class="status"><div class="pulse"></div><span id="sysState">Sincronizando con GitHub...</span></div>
   </header>
 
   <div class="container">
    <div class="chat-box" id="chatBox">
-    <div class="msg system">>> Inicializando motor de análisis documental. Espere un momento...</div>
+    <div class="msg system">>> Escaneando repositorio oficial para detectar archivos reales...</div>
    </div>
 
    <div class="input-panel">
-    <input id="queryInput" type="text" placeholder="Escribe un concepto (ej: oxidos, soldadura, normas)..." autocomplete="off" disabled>
+    <input id="queryInput" type="text" placeholder="Escribe un concepto (ej: nomenclatura, soldadura, circuitos)..." autocomplete="off" disabled>
     <button class="btn" id="sendBtn" disabled>CONSULTAR</button>
    </div>
   </div>
 
+  <!-- VISOR ONLINE CON PANEL DE IA INTEGRADO -->
   <div id="pdfViewerModal">
     <div class="viewer-header">
-      <span id="viewerTitle">📄 Lector Interno - Documento</span>
+      <span id="viewerTitle">📄 Lector Online & Asistente IA</span>
       <button class="close-viewer" id="closeViewerBtn">CERRAR [X]</button>
     </div>
-    <div class="viewer-body" id="viewerCanvasContainer">
-      <canvas id="pdfCanvas"></canvas>
+    <div class="viewer-layout">
+      <div class="viewer-canvas-pane">
+        <canvas id="pdfCanvas"></canvas>
+      </div>
+      <div class="viewer-ai-pane">
+        <div class="ai-pane-title">🤖 ASISTENTE IA (DOCUMENTO ACTIVO)</div>
+        <div class="ai-chat-history" id="aiChatHistory">
+          <div class="ai-msg bot">Hola. Preguntame lo que necesites sobre este manual y te responderé en base al contenido técnico del archivo.</div>
+        </div>
+        <div class="ai-input-row">
+          <input id="aiQueryInput" type="text" placeholder="Ej: ¿Qué dice sobre los óxidos?" autocomplete="off">
+          <button class="ai-send-btn" id="aiSendBtn">PREGUNTAR</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -135,13 +164,9 @@
         branch: "main"
       };
 
-      let repositoryFiles = [
-        "oxidos.pdf",
-        "metalurgia.pdf",
-        "seguridad-taller.pdf"
-      ];
-
+      let repositoryFiles = [];
       let indexedDocs = {};
+      let currentActiveDocText = ""; // Guarda el texto del PDF abierto actualmente para la IA
 
       const $ = (s) => document.querySelector(s);
 
@@ -155,6 +180,31 @@
         return div;
       }
 
+      async function fetchRepositoryFiles() {
+        try {
+          const apiUrl = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/`;
+          const response = await fetch(apiUrl);
+          if (!response.ok) throw new Error("No se pudo conectar con GitHub");
+          
+          const data = await response.json();
+          repositoryFiles = data
+            .filter(item => item.type === 'file' && item.name.toLowerCase().endsWith('.pdf'))
+            .map(item => item.name);
+
+          if (repositoryFiles.length === 0) {
+            appendMessage(">> Atención: No se encontraron archivos PDF en la raíz del repositorio.", "error");
+            return;
+          }
+
+          appendMessage(`>> Se detectaron ${repositoryFiles.length} archivo(s) real(es) en el repo: ${repositoryFiles.join(", ")}. Indexando...`, "system");
+          await indexRepository();
+
+        } catch (e) {
+          console.error("Error al obtener archivos de GitHub:", e);
+          appendMessage(">> Error al sincronizar con GitHub. Verificá tu conexión.", "error");
+        }
+      }
+
       async function indexRepository() {
         for (let fileName of repositoryFiles) {
           try {
@@ -163,7 +213,7 @@
             const pdfDoc = await loadingTask.promise;
             
             let fullText = "";
-            let maxPagesToRead = Math.min(pdfDoc.numPages, 5);
+            let maxPagesToRead = Math.min(pdfDoc.numPages, 10);
             
             for (let i = 1; i <= maxPagesToRead; i++) {
               const page = await pdfDoc.getPage(i);
@@ -173,25 +223,23 @@
 
             indexedDocs[fileName] = fullText.toLowerCase();
           } catch (e) {
-            console.warn(`No se pudo indexar ${fileName}:`, e);
+            console.warn(`No se pudo indexar el archivo ${fileName}:`, e);
             indexedDocs[fileName] = "";
           }
         }
 
-        $('#sysState').textContent = "Sistema 100% operativo y sincronizado";
+        $('#sysState').textContent = "Sistema sincronizado con archivos reales";
         $('#queryInput').disabled = false;
         $('#sendBtn').disabled = false;
-        appendMessage(">> Indexación completada con éxito. Ya podés buscar conceptos específicos en los manuales técnicos.", "system");
+        appendMessage(">> ¡Indexación completada! Buscá un concepto y abri el manual para activar la IA en el visor.", "system");
       }
 
       function processSmartQuery(query) {
         const qLower = query.toLowerCase().trim();
         const searchWords = qLower.split(/\s+/).filter(w => w.length > 2);
-
         if (searchWords.length === 0) return [];
 
         let results = [];
-
         for (let fileName of repositoryFiles) {
           let text = indexedDocs[fileName] || "";
           let matchCount = 0;
@@ -201,25 +249,20 @@
             const root = word.slice(0, 4);
             let regex = new RegExp(root, 'g');
             let matches = text.match(regex);
-            if (matches) {
-              matchCount += matches.length;
-            }
+            if (matches) matchCount += matches.length;
           });
 
-          if (fileName.toLowerCase().includes(searchWords[0])) {
-            matchCount += 15;
-          }
+          if (fileName.toLowerCase().includes(searchWords[0])) matchCount += 10;
 
           if (matchCount > 0) {
-            let certainty = Math.min(Math.floor(matchCount * 12 + 45), 98);
-            
+            let certainty = Math.min(Math.floor(matchCount * 8 + 30), 98);
             let snippetIndex = text.indexOf(searchWords[0]);
             if (snippetIndex !== -1) {
               let start = Math.max(0, snippetIndex - 40);
               let end = Math.min(text.length, snippetIndex + 80);
               snippet = "..." + text.substring(start, end) + "...";
             } else {
-              snippet = "Contenido verificado en manual técnico.";
+              snippet = "Término encontrado en el interior del manual.";
             }
 
             results.push({
@@ -230,7 +273,6 @@
             });
           }
         }
-
         results.sort((a, b) => b.certainty - a.certainty);
         return results;
       }
@@ -244,13 +286,12 @@
 
         setTimeout(() => {
           const matches = processSmartQuery(val);
-
           if (matches.length === 0) {
-            appendMessage(`>> No se encontró coincidencia directa para "${val}" en el contenido de los documentos del repositorio.`, 'error');
+            appendMessage(`>> No se encontró ninguna mención a "${val}" dentro de los documentos del repositorio.`, 'error');
             return;
           }
 
-          const aiMsg = appendMessage(`>> RESULTADOS DE ANÁLISIS DE CONTENIDO\nSe evaluaron los manuales en busca de: "${val}"`, 'ai');
+          const aiMsg = appendMessage(`>> RESULTADOS EN DOCUMENTOS REALES\nSe analizó el contenido en busca de: "${val}"`, 'ai');
 
           matches.forEach(match => {
             const card = document.createElement('div');
@@ -280,8 +321,13 @@
       }
 
       async function openCloudPDFViewer(url, fileName) {
-        $('#viewerTitle').textContent = `📄 Lector Online - ${fileName}`;
+        $('#viewerTitle').textContent = `📄 Lector Online & IA - ${fileName}`;
         $('#pdfViewerModal').style.display = 'flex';
+        // Asignar el texto de este documento específico a la variable de la IA
+        currentActiveDocText = indexedDocs[fileName] || "";
+
+        // Resetear chat de la IA al abrir un nuevo documento
+        $('#aiChatHistory').innerHTML = `<div class="ai-msg bot">Manual "${fileName}" cargado. ¿Qué te gustaría consultar o que le explique al profesor sobre este documento?</div>`;
 
         try {
           const loadingTask = pdfjsLib.getDocument(url);
@@ -290,7 +336,7 @@
 
           const canvas = document.getElementById('pdfCanvas');
           const context = canvas.getContext('2d');
-          const viewport = page.getViewport({ scale: 1.3 });
+          const viewport = page.getViewport({ scale: 1.2 });
 
           canvas.height = viewport.height;
           canvas.width = viewport.width;
@@ -298,8 +344,50 @@
           await page.render({ canvasContext: context, viewport: viewport }).promise;
         } catch (e) {
           console.error("Error al cargar el PDF:", e);
-          alert("No se pudo cargar el PDF. Verificá tu conexión.");
+          alert("No se pudo cargar el PDF en el visor.");
         }
+      }
+
+      // Lógica de respuesta inteligente de la IA basada en el texto del documento activo
+      function handleAIQuery() {
+        const val = $('#aiQueryInput').value.trim();
+        if (!val) return;
+
+        const history = $('#aiChatHistory');
+        const userDiv = document.createElement('div');
+        userDiv.className = 'ai-msg user';
+        userDiv.textContent = val;
+        history.appendChild(userDiv);
+        $('#aiQueryInput').value = '';
+        history.scrollTop = history.scrollHeight;
+
+        setTimeout(() => {
+          const botDiv = document.createElement('div');
+          botDiv.className = 'ai-msg bot';
+
+          const qLower = val.toLowerCase();
+          const words = qLower.split(/\s+/).filter(w => w.length > 2);
+
+          let foundSnippet = "";
+          for (let w of words) {
+            let idx = currentActiveDocText.indexOf(w);
+            if (idx !== -1) {
+              let start = Math.max(0, idx - 60);
+              let end = Math.min(currentActiveDocText.length, idx + 140);
+              foundSnippet = currentActiveDocText.substring(start, end);
+              break;
+            }
+          }
+
+          if (foundSnippet) {
+            botDiv.textContent = `Según el manual analizado, encontré esta referencia clave:\n\n"...${foundSnippet}..."`;
+          } else {
+            botDiv.textContent = `Revisé el texto activo del documento pero no encontré una mención directa a "${val}". Probá consultando por otro término técnico clave del manual.`;
+          }
+
+          history.appendChild(botDiv);
+          history.scrollTop = history.scrollHeight;
+        }, 300);
       }
 
       $('#closeViewerBtn').addEventListener('click', () => {
@@ -311,7 +399,12 @@
         if (e.key === 'Enter') handleQuerySubmission();
       });
 
-      indexRepository();
+      $('#aiSendBtn').addEventListener('click', handleAIQuery);
+      $('#aiQueryInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleAIQuery();
+      });
+
+      fetchRepositoryFiles();
     })();
   </script>
  </body>
