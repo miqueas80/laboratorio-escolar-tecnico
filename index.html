@@ -3,7 +3,7 @@
  <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>NEXUS-X // Hybrid RAG Core</title>
+  <title>NEXUS-X // Hibrid RAG Core</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
     if (window.pdfjsLib) {
@@ -56,7 +56,6 @@
     }
     .open-btn:hover{transform:translateY(-1px); box-shadow:0 0 15px rgba(0,242,254,0.6);}
 
-    /* Visor interno flotante */
     #pdfViewerModal {
       display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
       background: rgba(2, 4, 10, 0.9); z-index: 1000; backdrop-filter: blur(8px);
@@ -95,8 +94,8 @@
  </head>
  <body>
   <header>
-   <div class="logo">NEXUS-X // HYBRID RAG KERNEL</div>
-   <div class="status"><div class="pulse"></div><span id="sysState">Iniciando motor híbrido...</span></div>
+   <div class="logo">NEXUS-X // HYBRID RAG CORE</div>
+   <div class="status"><div class="pulse"></div><span id="sysState">Verificando sistema...</span></div>
   </header>
 
   <div class="container">
@@ -124,16 +123,10 @@
     (() => {
       'use strict';
 
-      const GITHUB_CONFIG = {
-        owner: "miqueas80",
-        repo: "laboratorio-escolar-tecnico",
-        branch: "main"
-      };
-
       let repository = [];
       const $ = (s) => document.querySelector(s);
 
-      // Base de datos nueva para evitar conflictos con versiones anteriores
+      // Abrir base de datos local (el "tarrito" de descargas IndexedDB)
       function openDB() {
         return new Promise((resolve, reject) => {
           const request = indexedDB.open("NexusXHybridDB", 1);
@@ -171,80 +164,92 @@
       }
 
       async function initializeSystem() {
+        // 1. Intentar cargar primero lo que ya está guardado en el tarrito local
+        let cachedDocs = [];
         try {
-          // PASO 1: Intentar cargar offline desde memoria (Súper Rápido)
-          const cachedDocs = await getAllDocsFromCache();
-          if (cachedDocs && cachedDocs.length > 0) {
-            repository = cachedDocs;
-            $('#sysState').textContent = "Núcleo Híbrido (Modo Local/Offline)";
-            $('#sysState').previousElementSibling.style.background = "#39ff88"; // Luz verde
-            enableApp(`>> Cargado al instante desde memoria interna. ${repository.length} documentos listos. Podés usarlo sin internet.`);
-            return;
-          }
+          cachedDocs = await getAllDocsFromCache();
         } catch (e) {
-          console.log("No hay caché. Se requiere red para la primera descarga.");
+          console.log("Tarrito local vacío o no disponible.");
         }
 
-        // PASO 2: Si no hay caché, descargar usando Internet y guardar
-        const treeUrl = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/git/trees/${GITHUB_CONFIG.branch}?recursive=1`;
+        if (cachedDocs && cachedDocs.length > 0) {
+          repository = cachedDocs;
+          $('#sysState').textContent = `Modo Offline/Local (${repository.length} docs en tarrito)`;
+          enableApp(`>> Sistema operativo. Usando ${repository.length} manuales almacenados en la memoria interna.`);
+        }
 
-        try {
-          $('#sysState').textContent = "Conectando a GitHub (Primera Vez)...";
-          const res = await fetch(treeUrl);
-          if (!res.ok) throw new Error("Sin conexión.");
-          const data = await res.json();
-          
-          const pdfFiles = (data.tree || []).filter(item => item.type === "blob" && item.path.toLowerCase().endsWith('.pdf'));
-
-          if (pdfFiles.length === 0) {
-            $('#sysState').textContent = "Sin PDFs";
-            appendMessage(">> No se encontraron archivos .pdf en el repositorio.", "error");
-            return;
-          }
-
-          $('#sysState').textContent = `Descargando ${pdfFiles.length} manuales a memoria interna...`;
-          let newDocs = [];
-
-          for (const file of pdfFiles) {
-            const rawUrl = `https://raw.githubusercontent.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/${GITHUB_CONFIG.branch}/${file.path}`;
-            const fileName = file.path.split('/').pop();
-
-            try {
-              const pdfRes = await fetch(rawUrl);
-              const arrayBuffer = await pdfRes.arrayBuffer();
+        // 2. Si hay internet, intentar buscar actualizaciones o bajar nuevos archivos en segundo plano
+        if (navigator.onLine) {
+          try {
+            $('#sysState').textContent = "Sincronizando con la nube...";
+            
+            // Intentamos leer el listado automático que genera GitHub Pages en el directorio raíz
+            const res = await fetch('./');
+            if (res.ok) {
+              const htmlText = await res.text();
+              const parser = new DOMParser();
+              const docHtml = parser.parseFromString(htmlText, 'text/html');
               
-              // Extraer texto limitado (solo 5 páginas) para no trabar la PC
-              const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
-              const doc = await loadingTask.promise;
-              let text = "";
-              const maxPages = Math.min(doc.numPages, 5); 
-              for (let i = 1; i <= maxPages; i++) {
-                const page = await doc.getPage(i);
-                const content = await page.getTextContent();
-                text += " " + content.items.map(item => item.str).join(" ");
+              // Extraemos todos los links que terminen en .pdf de la página del repositorio
+              const links = Array.from(docHtml.querySelectorAll('a'))
+                .map(a => a.getAttribute('href'))
+                .filter(href => href && href.toLowerCase().endsWith('.pdf'));
+
+              let downloadedCount = 0;
+              for (const pdfLink of links) {
+                // Si ya lo tenemos y pesa igual, podemos saltarlo o refrescarlo
+                const fileName = decodeURIComponent(pdfLink.split('/').pop());
+                
+                try {
+                  const pdfRes = await fetch(pdfLink);
+                  if (!pdfRes.ok) continue;
+                  const arrayBuffer = await pdfRes.arrayBuffer();
+
+                  const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+                  const pdfDoc = await loadingTask.promise;
+                  let text = "";
+                  const maxPages = Math.min(pdfDoc.numPages, 15);
+                  for (let i = 1; i <= maxPages; i++) {
+                    const page = await pdfDoc.getPage(i);
+                    const content = await page.getTextContent();
+                    text += " " + content.items.map(item => item.str).join(" ");
+                  }
+
+                  const docObj = {
+                    id: fileName,
+                    name: fileName,
+                    blobData: arrayBuffer,
+                    content: text
+                  };
+
+                  // Guardar en el tarrito local
+                  await saveDocsToCache([docObj]);
+                  
+                  // Actualizar memoria RAM activa
+                  const existingIndex = repository.findIndex(d => d.id === fileName);
+                  if (existingIndex >= 0) {
+                    repository[existingIndex] = docObj;
+                  } else {
+                    repository.push(docObj);
+                  }
+                  downloadedCount++;
+                } catch (err) {
+                  console.warn(`No se pudo descargar ${fileName}`);
+                }
               }
 
-              newDocs.push({
-                id: file.path,
-                name: fileName,
-                blobData: arrayBuffer, // Se guarda el PDF completo (binario) para el visor offline
-                content: text
-              });
-            } catch(e) {
-              console.warn(`Error procesando ${fileName}`);
+              if (downloadedCount > 0 && repository.length > 0) {
+                $('#sysState').textContent = "Sincronizado (Online)";
+                appendMessage(`>> Sincronización completada. ${downloadedCount} manuales actualizados/guardados en el tarrito.`, 'system');
+              }
             }
+          } catch (netErr) {
+            console.log("Fallo de red secundario, operando con caché local.");
           }
+        }
 
-          repository = newDocs;
-          await saveDocsToCache(newDocs);
-
-          $('#sysState').textContent = "Núcleo Híbrido Operativo";
-          $('#sysState').previousElementSibling.style.background = "#39ff88";
-          enableApp(`>> Descarga completa. ${repository.length} manuales guardados. Ya podés desconectar el Wi-Fi si querés.`);
-
-        } catch (err) {
-          $('#sysState').textContent = "Error: Sin Red / Sin Caché";
-          $('#sysState').previousElementSibling.style.background = "#ff5577"; // Luz roja
+        if (repository.length === 0) {
+          $('#sysState').textContent = "Sin red / Sin caché";
           appendMessage(`>> ADVERTENCIA: La memoria interna está vacía y no hay internet. Conectá la netbook unos minutos para bajar los manuales por primera vez.`, "error");
         }
       }
@@ -252,7 +257,7 @@
       function enableApp(systemMsg) {
         $('#queryInput').disabled = false;
         $('#sendBtn').disabled = false;
-        appendMessage(systemMsg, 'system');
+        if (systemMsg) appendMessage(systemMsg, 'system');
       }
 
       function appendMessage(text, sender) {
@@ -265,19 +270,30 @@
         return div;
       }
 
+      // Buscador flexible por palabras sueltas en la memoria local
       function processQuery(query) {
-        if (repository.length === 0) return { text: ">> Sin documentos.", doc: null };
+        if (repository.length === 0) return { text: ">> Sin documentos en la memoria local.", doc: null };
 
         const qLower = query.toLowerCase();
+        const searchWords = qLower.split(/\s+/).filter(w => w.length > 2);
+        
+        if (searchWords.length === 0) return { text: ">> Escribe palabras clave más largas para realizar la búsqueda.", doc: null };
+
         let bestMatch = null;
         let highestScore = 0;
 
         repository.forEach(doc => {
-          const words = qLower.split(/\s+/);
           let score = 0;
-          words.forEach(w => {
-            if (w.length > 3 && doc.content.toLowerCase().includes(w)) score += 2;
+          const contentLower = doc.content.toLowerCase();
+          
+          searchWords.forEach(word => {
+            const regex = new RegExp(word, 'g');
+            const matches = contentLower.match(regex);
+            if (matches) {
+              score += matches.length * 2;
+            }
           });
+
           if (score > highestScore) {
             highestScore = score;
             bestMatch = doc;
@@ -285,16 +301,16 @@
         });
 
         if (!bestMatch || highestScore === 0) {
-          return { text: ">> No se encontraron coincidencias exactas para esa consulta.", doc: null };
+          return { text: ">> No se encontraron coincidencias para esas palabras en los manuales indexados.", doc: null };
         }
 
         const contentLower = bestMatch.content.toLowerCase();
-        const firstWord = qLower.split(/\s+/).find(w => w.length > 3) || "";
-        let index = contentLower.indexOf(firstWord);
+        let index = contentLower.indexOf(searchWords[0]);
         if (index === -1) index = 0;
+        const start = Math.max(0, index - 60);
+        const snippet = bestMatch.content.substring(start, start + 350).replace(/\s+/g, ' ').trim();
 
-        const snippet = bestMatch.content.substring(index, index + 350).replace(/\s+/g, ' ').trim();
-        return { text: `>> COINCIDENCIA ENCONTRADA\n\n"${snippet}..."`, doc: bestMatch };
+        return { text: `>> COINCIDENCIA ENCONTRADA (Puntaje: ${highestScore})\n\n"...${snippet}..."`, doc: bestMatch };
       }
 
       function handleQuerySubmission() {
@@ -315,7 +331,7 @@
             card.innerHTML = `
               <div class="doc-action-title">📄 ARCHIVO FUENTE: ${result.doc.name}</div>
               <button class="open-btn">
-                <span>📂</span> ABRIR LECTOR INTERNO
+                <span>📂</span> ABRIR DESDE EL TARRITO LOCAL
               </button>
             `;
             aiMsg.appendChild(card);
@@ -327,7 +343,7 @@
 
           const box = $('#chatBox');
           box.scrollTop = box.scrollHeight;
-          $('#sendBtn').disabled = false;
+          $('#sendBtn'].disabled = false;
           $('#queryInput').focus();
         }, 100);
       }
@@ -337,7 +353,6 @@
         $('#pdfViewerModal').style.display = 'flex';
 
         try {
-          // Lee el ArrayBuffer (el archivo real) directamente desde la memoria local
           const loadingTask = pdfjsLib.getDocument({ data: doc.blobData });
           const pdfDoc = await loadingTask.promise;
           const page = await pdfDoc.getPage(1);
@@ -351,7 +366,7 @@
 
           await page.render({ canvasContext: context, viewport: viewport }).promise;
         } catch (e) {
-          console.error("Error al renderizar el PDF offline:", e);
+          console.error("Error al renderizar el PDF:", e);
         }
       }
 
