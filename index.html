@@ -8,17 +8,11 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
-<script>
-pdfjsLib.GlobalWorkerOptions.workerSrc =
-"https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-</script>
-
 <style>
-
 :root{
   --bg:#02040a;
-  --panel:rgba(7,14,27,.92);
-  --stroke:rgba(0,242,254,.25);
+  --panel:rgba(7,14,27,.94);
+  --stroke:rgba(0,242,254,.22);
   --accent:#00f2fe;
   --accent2:#4facfe;
   --success:#39ff88;
@@ -63,8 +57,8 @@ body{
 }
 
 header{
-  min-height:72px;
-  padding:15px 24px;
+  min-height:70px;
+  padding:14px 24px;
 
   display:flex;
   justify-content:space-between;
@@ -76,7 +70,7 @@ header{
   top:0;
   z-index:100;
 
-  background:rgba(2,5,12,.92);
+  background:rgba(2,5,12,.94);
   border-bottom:1px solid var(--stroke);
 
   backdrop-filter:blur(15px);
@@ -87,9 +81,7 @@ header{
   font-size:14px;
   font-weight:900;
   letter-spacing:2px;
-
-  text-shadow:
-    0 0 10px rgba(0,242,254,.45);
+  text-shadow:0 0 12px rgba(0,242,254,.45);
 }
 
 .status{
@@ -104,45 +96,29 @@ header{
 .pulse{
   width:7px;
   height:7px;
-
   border-radius:50%;
-
   background:var(--accent);
-
-  box-shadow:
-    0 0 12px var(--accent);
-
+  box-shadow:0 0 12px var(--accent);
   animation:pulse 1.4s infinite;
 }
 
 @keyframes pulse{
-
-  0%,100%{
-    opacity:1;
-  }
-
-  50%{
-    opacity:.25;
-  }
-
+  0%,100%{opacity:1}
+  50%{opacity:.2}
 }
 
 .container{
   width:min(1100px,94vw);
-
   margin:22px auto 30px;
 
   display:flex;
   flex-direction:column;
-
   gap:14px;
 }
 
 .panel{
   background:var(--panel);
-
   border:1px solid var(--stroke);
-
   border-radius:12px;
 
   box-shadow:
@@ -155,42 +131,32 @@ header{
 
 .repo-head{
   display:flex;
-
   justify-content:space-between;
   align-items:center;
-
   gap:15px;
-
   margin-bottom:12px;
 }
 
 .repo-title{
   color:var(--accent);
-
   font-size:10px;
-
   letter-spacing:1px;
 }
 
 .repo-info{
   color:var(--muted);
-
   font-size:9px;
 }
 
 .docs{
   display:flex;
-
   flex-wrap:wrap;
-
   gap:8px;
 }
 
 .doc-pill{
   display:inline-flex;
-
   align-items:center;
-
   gap:7px;
 
   padding:8px 10px;
@@ -212,21 +178,13 @@ header{
 
 .doc-pill:hover,
 .doc-pill.selected{
-
   border-color:var(--accent);
-
   color:var(--accent);
-
   background:rgba(0,242,254,.07);
-
-  box-shadow:
-    0 0 15px rgba(0,242,254,.08);
-
 }
 
 .chat-box{
   min-height:460px;
-
   max-height:60vh;
 
   overflow-y:auto;
@@ -235,7 +193,6 @@ header{
 
   display:flex;
   flex-direction:column;
-
   gap:14px;
 }
 
@@ -254,125 +211,86 @@ header{
 }
 
 .msg.system{
-
   align-self:flex-start;
-
   color:var(--accent);
 
-  background:
-    rgba(0,242,254,.035);
+  background:rgba(0,242,254,.035);
 
-  border:
-    1px solid rgba(0,242,254,.17);
-
+  border:1px solid rgba(0,242,254,.17);
 }
 
 .msg.user{
-
   align-self:flex-end;
 
   color:#fff;
 
-  background:
-    rgba(79,172,254,.09);
+  background:rgba(79,172,254,.09);
 
-  border:
-    1px solid rgba(79,172,254,.3);
-
+  border:1px solid rgba(79,172,254,.3);
 }
 
 .msg.ai{
-
   align-self:flex-start;
 
   color:#d7dee9;
 
-  background:
-    rgba(255,255,255,.025);
+  background:rgba(255,255,255,.025);
 
-  border:
-    1px solid rgba(255,255,255,.09);
-
+  border:1px solid rgba(255,255,255,.09);
 }
 
 .msg.error{
-
   color:#ff9bad;
 
-  background:
-    rgba(255,85,119,.04);
+  background:rgba(255,85,119,.04);
 
-  border:
-    1px solid rgba(255,85,119,.3);
-
+  border:1px solid rgba(255,85,119,.3);
 }
 
 .result{
-
   margin-top:12px;
-
   padding:12px;
 
-  border:
-    1px solid rgba(57,255,136,.2);
+  border:1px solid rgba(57,255,136,.2);
 
-  background:
-    rgba(57,255,136,.035);
+  background:rgba(57,255,136,.035);
 
   border-radius:8px;
 }
 
 .result-title{
-
   color:var(--success);
-
   font-size:10px;
-
-  font-weight:800;
+  font-weight:900;
 }
 
 .result-file{
-
   margin-top:7px;
-
   color:#e2e8f0;
-
   font-size:11px;
-
   word-break:break-word;
 }
 
 .result-score{
-
   margin-top:5px;
-
   color:var(--muted);
-
   font-size:9px;
 }
 
 .result-page{
-
   margin-top:4px;
-
   color:var(--accent);
-
   font-size:9px;
 }
 
 .actions{
-
   display:flex;
-
   flex-wrap:wrap;
-
   gap:8px;
-
   margin-top:10px;
 }
 
 .open-btn{
-
   padding:7px 10px;
 
   border-radius:6px;
@@ -389,12 +307,10 @@ header{
   text-decoration:none;
 
   font-size:9px;
-
   font-weight:900;
 }
 
 .sources{
-
   margin-top:10px;
 
   color:#94a3b8;
@@ -405,18 +321,14 @@ header{
 }
 
 .input-panel{
-
   padding:11px;
 
   display:flex;
-
   align-items:center;
-
   gap:10px;
 }
 
 .input-panel input{
-
   flex:1;
 
   min-width:0;
@@ -426,13 +338,11 @@ header{
   background:transparent;
 
   border:0;
-
   outline:0;
 
   color:var(--text);
 
   font-family:var(--mono);
-
   font-size:13px;
 }
 
@@ -441,7 +351,6 @@ header{
 }
 
 .btn{
-
   border:0;
 
   border-radius:7px;
@@ -460,41 +369,18 @@ header{
   font-family:var(--mono);
 
   font-size:10px;
-
   font-weight:900;
 
   cursor:pointer;
 }
 
 .btn:disabled{
-
   opacity:.45;
-
   cursor:not-allowed;
 }
 
 .btn:hover:not(:disabled){
-
-  box-shadow:
-    0 0 18px rgba(0,242,254,.35);
-}
-
-.typing{
-  color:var(--accent);
-
-  animation:typing 1s infinite;
-}
-
-@keyframes typing{
-
-  0%,100%{
-    opacity:.35;
-  }
-
-  50%{
-    opacity:1;
-  }
-
+  box-shadow:0 0 18px rgba(0,242,254,.35);
 }
 
 @media(max-width:650px){
@@ -516,9 +402,7 @@ header{
   .msg{
     max-width:96%;
   }
-
 }
-
 </style>
 </head>
 
@@ -535,7 +419,7 @@ header{
     <div class="pulse"></div>
 
     <span id="sysState">
-      Inicializando núcleo...
+      Inicializando...
     </span>
 
   </div>
@@ -563,7 +447,6 @@ header{
 
   </div>
 
-
   <div
     class="docs"
     id="docsList"
@@ -582,21 +465,16 @@ header{
 
 >> NEXUS-X CORE ONLINE.
 
->> Repositorio:
+>> REPOSITORIO:
 github.com/miqueas80/laboratorio-escolar
 
->> Motor:
+>> MOTOR:
 HYBRID RAG + GENERATIVE AI
 
->> Buscando documentación...
+>> Inicializando índice documental...
 
-Puedes preguntar:
-
-• ¿Qué elementos de protección personal se necesitan?
-• ¿Qué hacer ante una emergencia?
-• ¿Qué documento habla de seguridad?
-• ¿Dónde aparecen los protocolos?
-• Explícame el procedimiento indicado en el documento.
+Puedes preguntar sobre los manuales,
+protocolos y PDFs del repositorio.
 
   </div>
 
@@ -610,7 +488,7 @@ Puedes preguntar:
     id="queryInput"
     type="text"
     autocomplete="off"
-    placeholder="Pregunta sobre el conocimiento del laboratorio..."
+    placeholder="Pregunta sobre los documentos..."
   >
 
   <button
@@ -628,33 +506,41 @@ Puedes preguntar:
 
 <script>
 
-(() => {
-
 "use strict";
 
 
 /* =========================================================
-   CONFIGURACIÓN
+   CONFIGURACIÓN GITHUB
    ========================================================= */
 
 const GITHUB = {
 
-  owner:"miqueas80",
+  owner: "miqueas80",
 
-  repo:"laboratorio-escolar",
+  repo: "laboratorio-escolar",
 
-  branch:"main"
+  branch: "main"
 
 };
 
 
-/*
-  La IA vive en el backend.
-
-  NO pongas una API key aquí.
-*/
+/* =========================================================
+   BACKEND IA
+   ========================================================= */
 
 const AI_ENDPOINT = "/api/chat";
+
+
+/* =========================================================
+   PDF.JS
+   ========================================================= */
+
+if(window.pdfjsLib){
+
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+}
 
 
 /* =========================================================
@@ -663,13 +549,13 @@ const AI_ENDPOINT = "/api/chat";
 
 const state = {
 
-  ready:false,
+  ready: false,
 
-  documents:[],
+  documents: [],
 
-  chunks:[],
+  chunks: [],
 
-  indexing:false
+  indexing: false
 
 };
 
@@ -678,9 +564,8 @@ const state = {
    DOM
    ========================================================= */
 
-const $ =
-  selector =>
-    document.querySelector(selector);
+const $ = selector =>
+  window.document.querySelector(selector);
 
 const chatBox =
   $("#chatBox");
@@ -745,18 +630,14 @@ function tokenize(text){
 }
 
 
-/* =========================================================
-   STOPWORDS
-   ========================================================= */
-
-const STOPWORDS =
-new Set([
+const STOPWORDS = new Set([
 
   "que",
   "como",
   "cual",
   "cuales",
   "donde",
+  "cuando",
   "para",
   "sobre",
   "entre",
@@ -778,6 +659,9 @@ new Set([
   "estas",
   "hay",
   "son",
+  "del",
+  "los",
+  "las",
   "quiero",
   "busca",
   "buscar",
@@ -795,7 +679,6 @@ new Set([
 function meaningfulTokens(text){
 
   return tokenize(text)
-
     .filter(
       word =>
         !STOPWORDS.has(word)
@@ -805,7 +688,7 @@ function meaningfulTokens(text){
 
 
 /* =========================================================
-   CONCEPTOS
+   EXPANSIÓN SEMÁNTICA LOCAL
    ========================================================= */
 
 const CONCEPTS = {
@@ -869,8 +752,7 @@ const CONCEPTS = {
     "cortadura",
     "corte",
     "herida",
-    "accidente",
-    "sangre"
+    "accidente"
   ],
 
   quemadura:[
@@ -924,13 +806,14 @@ function expandQuery(query){
   const expanded =
     new Set(base);
 
-  for(const word of base){
+  for(
+    const word of base
+  ){
 
     if(CONCEPTS[word]){
 
       for(
-        const related
-        of CONCEPTS[word]
+        const related of CONCEPTS[word]
       ){
 
         expanded.add(
@@ -949,13 +832,13 @@ function expandQuery(query){
 
 
 /* =========================================================
-   GITHUB
+   GITHUB API
    ========================================================= */
 
-function apiURL(){
+function githubTreeURL(){
 
   return (
-    `https://api.github.com/repos/` +
+    "https://api.github.com/repos/" +
     `${GITHUB.owner}/` +
     `${GITHUB.repo}/git/trees/` +
     `${GITHUB.branch}?recursive=1`
@@ -964,36 +847,32 @@ function apiURL(){
 }
 
 
-function githubURL(path){
+function githubURL(filePath){
 
   return (
-    `https://github.com/` +
+    "https://github.com/" +
     `${GITHUB.owner}/` +
     `${GITHUB.repo}/blob/` +
     `${GITHUB.branch}/` +
-    path
+    filePath
       .split("/")
-      .map(
-        encodeURIComponent
-      )
+      .map(encodeURIComponent)
       .join("/")
   );
 
 }
 
 
-function rawURL(path){
+function rawURL(filePath){
 
   return (
-    `https://raw.githubusercontent.com/` +
+    "https://raw.githubusercontent.com/" +
     `${GITHUB.owner}/` +
     `${GITHUB.repo}/` +
     `${GITHUB.branch}/` +
-    path
+    filePath
       .split("/")
-      .map(
-        encodeURIComponent
-      )
+      .map(encodeURIComponent)
       .join("/")
   );
 
@@ -1001,20 +880,20 @@ function rawURL(path){
 
 
 /* =========================================================
-   DESCUBRIR DOCUMENTOS
+   DESCUBRIR ARCHIVOS
    ========================================================= */
 
 async function discoverFiles(){
 
   const response =
     await fetch(
-      apiURL()
+      githubTreeURL()
     );
 
   if(!response.ok){
 
     throw new Error(
-      `GitHub HTTP ${response.status}`
+      `GitHub respondió HTTP ${response.status}`
     );
 
   }
@@ -1022,26 +901,22 @@ async function discoverFiles(){
   const data =
     await response.json();
 
-
   return (data.tree || [])
+    .filter(item => {
 
-    .filter(
-      item => {
+      if(item.type !== "blob")
+        return false;
 
-        if(item.type !== "blob")
-          return false;
+      const filePath =
+        item.path.toLowerCase();
 
-        const path =
-          item.path.toLowerCase();
+      return (
+        filePath.endsWith(".pdf") ||
+        filePath.endsWith(".txt") ||
+        filePath.endsWith(".md")
+      );
 
-        return (
-          path.endsWith(".pdf") ||
-          path.endsWith(".txt") ||
-          path.endsWith(".md")
-        );
-
-      }
-    );
+    });
 
 }
 
@@ -1052,9 +927,21 @@ async function discoverFiles(){
 
 async function extractPDF(url){
 
+  if(!window.pdfjsLib){
+
+    throw new Error(
+      "PDF.js no está disponible."
+    );
+
+  }
+
   const pdf =
-    await pdfjsLib
-      .getDocument(url)
+    await window.pdfjsLib
+      .getDocument({
+        url,
+        disableAutoFetch:false,
+        disableStream:false
+      })
       .promise;
 
 
@@ -1062,33 +949,37 @@ async function extractPDF(url){
 
 
   for(
-    let number = 1;
-    number <= pdf.numPages;
-    number++
+    let pageNumber = 1;
+    pageNumber <= pdf.numPages;
+    pageNumber++
   ){
 
     const page =
-      await pdf.getPage(number);
+      await pdf.getPage(
+        pageNumber
+      );
 
 
-    const content =
+    const textContent =
       await page.getTextContent();
 
 
     const text =
-      content.items
+      textContent.items
         .map(
           item =>
-            item.str
+            item.str || ""
         )
-        .join(" ");
+        .join(" ")
+        .replace(/\s+/g," ")
+        .trim();
 
 
     pages.push({
 
-      page:number,
+      page:pageNumber,
 
-      text:text.trim()
+      text
 
     });
 
@@ -1112,7 +1003,7 @@ async function loadDocument(file){
       .endsWith(".pdf");
 
 
-  const document = {
+  const doc = {
 
     id:file.path,
 
@@ -1122,8 +1013,7 @@ async function loadDocument(file){
       .split("/")
       .pop(),
 
-    type:
-      isPDF
+    type:isPDF
       ? "pdf"
       : "text",
 
@@ -1144,14 +1034,14 @@ async function loadDocument(file){
 
     try{
 
-      document.pages =
+      doc.pages =
         await extractPDF(
-          document.rawURL
+          doc.rawURL
         );
 
 
-      document.content =
-        document.pages
+      doc.content =
+        doc.pages
           .map(
             page =>
               page.text
@@ -1162,8 +1052,8 @@ async function loadDocument(file){
     catch(error){
 
       console.warn(
-        "PDF error:",
-        document.name,
+        "No se pudo leer PDF:",
+        doc.name,
         error
       );
 
@@ -1176,13 +1066,13 @@ async function loadDocument(file){
 
       const response =
         await fetch(
-          document.rawURL
+          doc.rawURL
         );
 
 
       if(response.ok){
 
-        document.content =
+        doc.content =
           await response.text();
 
       }
@@ -1191,8 +1081,8 @@ async function loadDocument(file){
     catch(error){
 
       console.warn(
-        "Text error:",
-        document.name,
+        "No se pudo leer:",
+        doc.name,
         error
       );
 
@@ -1201,19 +1091,19 @@ async function loadDocument(file){
   }
 
 
-  return document;
+  return doc;
 
 }
 
 
 /* =========================================================
-   CHUNKS
+   CHUNKING
    ========================================================= */
 
-function createChunks(document){
+function createChunks(doc){
 
   const clean =
-    document.content
+    doc.content
       .replace(/\s+/g," ")
       .trim();
 
@@ -1241,39 +1131,37 @@ function createChunks(document){
     position < words.length
   ){
 
+    const chunkWords =
+      words.slice(
+        position,
+        position + SIZE
+      );
+
+
     const text =
-      words
-        .slice(
-          position,
-          position + SIZE
-        )
-        .join(" ");
+      chunkWords.join(" ");
 
-
-    /*
-      Detectar página aproximada.
-    */
 
     let page = null;
 
 
-    if(document.pages.length){
+    if(doc.pages.length){
 
-      let total = 0;
+      let totalWords = 0;
 
 
       for(
-        const pageData
-        of document.pages
+        const pageData of doc.pages
       ){
 
-        total +=
+        totalWords +=
           pageData.text
             .split(/\s+/)
+            .filter(Boolean)
             .length;
 
 
-        if(position <= total){
+        if(position < totalWords){
 
           page =
             pageData.page;
@@ -1290,24 +1178,24 @@ function createChunks(document){
     chunks.push({
 
       id:
-        `${document.id}:${position}`,
+        `${doc.id}:${position}`,
 
       documentId:
-        document.id,
+        doc.id,
 
       documentName:
-        document.name,
+        doc.name,
 
       documentPath:
-        document.path,
+        doc.path,
 
       page,
 
       githubURL:
-        document.githubURL,
+        doc.githubURL,
 
       rawURL:
-        document.rawURL,
+        doc.rawURL,
 
       text,
 
@@ -1329,7 +1217,7 @@ function createChunks(document){
 
 
 /* =========================================================
-   SCORE
+   RANKING
    ========================================================= */
 
 function scoreChunk(
@@ -1357,25 +1245,20 @@ function scoreChunk(
 
 
   for(
-    const token
-    of queryTokens
+    const token of queryTokens
   ){
 
-    if(
-      content.includes(token)
-    ){
+    if(content.includes(token)){
 
       score += 2;
 
       if(token.length >= 7)
-        score += 2;
+        score += 1;
 
     }
 
 
-    if(
-      name.includes(token)
-    ){
+    if(name.includes(token)){
 
       score += 5;
 
@@ -1389,7 +1272,7 @@ function scoreChunk(
 
 
   if(
-    phrase.length > 10 &&
+    phrase.length >= 12 &&
     content.includes(phrase)
   ){
 
@@ -1404,7 +1287,7 @@ function scoreChunk(
 
 
 /* =========================================================
-   SEARCH
+   BÚSQUEDA
    ========================================================= */
 
 function search(query){
@@ -1441,7 +1324,24 @@ function search(query){
 
 
 /* =========================================================
-   RENDER DOCUMENTOS
+   ESCAPE HTML
+   ========================================================= */
+
+function escapeHTML(text){
+
+  return String(text)
+
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+
+}
+
+
+/* =========================================================
+   RENDER REPOSITORIO
    ========================================================= */
 
 function renderDocuments(){
@@ -1450,12 +1350,11 @@ function renderDocuments(){
 
 
   for(
-    const document
-    of state.documents
+    const doc of state.documents
   ){
 
     const link =
-      document.createElement("a");
+      window.document.createElement("a");
 
 
     link.className =
@@ -1463,11 +1362,11 @@ function renderDocuments(){
 
 
     link.dataset.id =
-      document.id;
+      doc.id;
 
 
     link.href =
-      document.githubURL;
+      doc.githubURL;
 
 
     link.target =
@@ -1475,11 +1374,35 @@ function renderDocuments(){
 
 
     link.rel =
-      "noopener";
+      "noopener noreferrer";
 
 
-    link.textContent =
-      `📄 ${document.name}`;
+    const icon =
+      window.document.createElement("span");
+
+    icon.textContent = "📄";
+
+
+    const name =
+      window.document.createElement("span");
+
+    name.textContent =
+      doc.name;
+
+
+    const tag =
+      window.document.createElement("span");
+
+    tag.style.cssText =
+      "font-size:9px;color:var(--accent)";
+
+    tag.textContent =
+      "[GITHUB]";
+
+
+    link.appendChild(icon);
+    link.appendChild(name);
+    link.appendChild(tag);
 
 
     docsList.appendChild(
@@ -1490,18 +1413,19 @@ function renderDocuments(){
 
 
   repoInfo.textContent =
-    `${state.documents.length} documentos`;
+    `${state.documents.length} documentos · ` +
+    `${state.chunks.length} fragmentos`;
 
 }
 
 
 /* =========================================================
-   SELECT DOCUMENT
+   SELECCIONAR DOCUMENTO
    ========================================================= */
 
 function selectDocument(id){
 
-  document
+  window.document
     .querySelectorAll(".doc-pill")
     .forEach(
       element => {
@@ -1518,16 +1442,16 @@ function selectDocument(id){
 
 
 /* =========================================================
-   MESSAGE
+   MENSAJE
    ========================================================= */
 
-function message(
+function appendMessage(
   text,
   type
 ){
 
   const element =
-    document.createElement("div");
+    window.document.createElement("div");
 
 
   element.className =
@@ -1553,7 +1477,7 @@ function message(
 
 
 /* =========================================================
-   RESULT
+   MOSTRAR FUENTE
    ========================================================= */
 
 function showResult(result){
@@ -1568,7 +1492,7 @@ function showResult(result){
 
 
   const element =
-    document.createElement("div");
+    window.document.createElement("div");
 
 
   element.className =
@@ -1577,8 +1501,8 @@ function showResult(result){
 
   const page =
     chunk.page
-    ? `Página ${chunk.page}`
-    : "Página no determinada";
+      ? `Página ${chunk.page}`
+      : "Página no determinada";
 
 
   element.innerHTML = `
@@ -1605,11 +1529,12 @@ function showResult(result){
       </div>
 
       <div class="result-page">
-        📍 ${page}
+        📍 ${escapeHTML(page)}
       </div>
 
       <div class="result-score">
-        Relevancia: ${result.score}
+        Índice de relevancia:
+        ${result.score}
       </div>
 
       <div class="actions">
@@ -1618,7 +1543,7 @@ function showResult(result){
           class="open-btn"
           href="${chunk.githubURL}"
           target="_blank"
-          rel="noopener"
+          rel="noopener noreferrer"
         >
           ABRIR EN GITHUB
         </a>
@@ -1627,15 +1552,14 @@ function showResult(result){
           class="open-btn"
           href="${chunk.rawURL}"
           target="_blank"
-          rel="noopener"
+          rel="noopener noreferrer"
         >
-          ABRIR PDF
+          ABRIR DOCUMENTO
         </a>
 
       </div>
 
     </div>
-
   `;
 
 
@@ -1651,47 +1575,11 @@ function showResult(result){
 
 
 /* =========================================================
-   ESCAPE
-   ========================================================= */
-
-function escapeHTML(text){
-
-  return String(text)
-
-    .replaceAll(
-      "&",
-      "&amp;"
-    )
-
-    .replaceAll(
-      "<",
-      "&lt;"
-    )
-
-    .replaceAll(
-      ">",
-      "&gt;"
-    )
-
-    .replaceAll(
-      '"',
-      "&quot;"
-    )
-
-    .replaceAll(
-      "'",
-      "&#039;"
-    );
-
-}
-
-
-/* =========================================================
-   LLAMAR IA
+   IA
    ========================================================= */
 
 async function askAI(
-  query,
+  question,
   results
 ){
 
@@ -1735,7 +1623,7 @@ async function askAI(
 
         body:JSON.stringify({
 
-          question:query,
+          question,
 
           context
 
@@ -1745,15 +1633,29 @@ async function askAI(
     );
 
 
-  const data =
-    await response.json();
+  let data = null;
+
+
+  try{
+
+    data =
+      await response.json();
+
+  }
+  catch{
+
+    throw new Error(
+      "El servidor devolvió una respuesta inválida."
+    );
+
+  }
 
 
   if(!response.ok){
 
     throw new Error(
       data.error ||
-      `Servidor IA HTTP ${response.status}`
+      `Servidor HTTP ${response.status}`
     );
 
   }
@@ -1765,7 +1667,7 @@ async function askAI(
 
 
 /* =========================================================
-   CONSULTA COMPLETA
+   PROCESAR CONSULTA
    ========================================================= */
 
 async function processQuery(
@@ -1778,10 +1680,15 @@ async function processQuery(
 
   if(!results.length){
 
-    message(
+    appendMessage(
 
-      ">> NEXUS-X no encontró evidencia suficiente en los documentos indexados.\n\n" +
-      "No se enviará una respuesta inventada.",
+      ">> SIN EVIDENCIA SUFICIENTE.\n\n" +
+
+      "NEXUS-X no encontró fragmentos " +
+      "relevantes en el repositorio.\n\n" +
+
+      "No se generará una respuesta basada " +
+      "en información no recuperada.",
 
       "ai"
 
@@ -1798,8 +1705,8 @@ async function processQuery(
 
 
   const loading =
-    message(
-      ">> Recuperando evidencia y consultando núcleo IA...",
+    appendMessage(
+      ">> RECUPERANDO EVIDENCIA...\n>> CONSULTANDO NÚCLEO IA...",
       "system"
     );
 
@@ -1816,34 +1723,34 @@ async function processQuery(
     loading.remove();
 
 
-    message(
+    appendMessage(
       data.answer,
       "ai"
     );
 
 
     if(
-      data.sources &&
+      Array.isArray(data.sources) &&
       data.sources.length
     ){
 
-      const sourceText =
+      const text =
         data.sources
           .map(
             source =>
               `• ${source.document}` +
               (
                 source.page
-                ? ` · página ${source.page}`
-                : ""
+                  ? ` · página ${source.page}`
+                  : ""
               )
           )
           .join("\n");
 
 
-      message(
+      appendMessage(
         ">> FUENTES UTILIZADAS\n\n" +
-        sourceText,
+        text,
         "system"
       );
 
@@ -1855,8 +1762,9 @@ async function processQuery(
     loading.remove();
 
 
-    message(
-      `>> ERROR DEL NÚCLEO IA\n\n${error.message}`,
+    appendMessage(
+      ">> ERROR DEL NÚCLEO IA\n\n" +
+      error.message,
       "error"
     );
 
@@ -1871,10 +1779,14 @@ async function processQuery(
 
 async function init(){
 
+  if(state.indexing)
+    return;
+
+
+  state.indexing = true;
+
+
   try{
-
-    state.indexing = true;
-
 
     sysState.textContent =
       "Conectando con GitHub...";
@@ -1887,39 +1799,49 @@ async function init(){
     if(!files.length){
 
       throw new Error(
-        "No se encontraron documentos."
+        "No se encontraron PDFs, TXT o MD."
       );
 
     }
 
 
     sysState.textContent =
-      `Encontrados ${files.length} archivos. Indexando...`;
+      `${files.length} archivos encontrados...`;
 
 
     for(
-      const file
-      of files
+      const file of files
     ){
 
-      const document =
-        await loadDocument(file);
+      try{
+
+        const doc =
+          await loadDocument(file);
 
 
-      if(
-        document.content &&
-        document.content.trim()
-      ){
+        if(
+          doc.content &&
+          doc.content.trim()
+        ){
 
-        state.documents.push(
-          document
-        );
+          state.documents.push(
+            doc
+          );
 
 
-        state.chunks.push(
-          ...createChunks(
-            document
-          )
+          state.chunks.push(
+            ...createChunks(doc)
+          );
+
+        }
+
+      }
+      catch(error){
+
+        console.warn(
+          "Archivo omitido:",
+          file.path,
+          error
         );
 
       }
@@ -1935,8 +1857,17 @@ async function init(){
     }
 
 
-    state.ready = true;
+    if(!state.documents.length){
 
+      throw new Error(
+        "Los archivos fueron encontrados, " +
+        "pero no pudo extraerse contenido."
+      );
+
+    }
+
+
+    state.ready = true;
     state.indexing = false;
 
 
@@ -1944,7 +1875,7 @@ async function init(){
       "NÚCLEO OPERATIVO · RAG ONLINE";
 
 
-    message(
+    appendMessage(
 
       ">> INDEXACIÓN COMPLETADA.\n\n" +
 
@@ -1954,9 +1885,9 @@ async function init(){
 
       `Documentos indexados: ${state.documents.length}\n` +
 
-      `Fragmentos: ${state.chunks.length}\n\n` +
+      `Fragmentos generados: ${state.chunks.length}\n\n` +
 
-      ">> GENERATIVE RAG READY.",
+      ">> NEXUS-X READY.",
 
       "system"
 
@@ -1969,10 +1900,10 @@ async function init(){
 
 
     sysState.textContent =
-      "Error de inicialización";
+      "ERROR DE INICIALIZACIÓN";
 
 
-    message(
+    appendMessage(
 
       ">> ERROR DE INICIALIZACIÓN\n\n" +
       error.message,
@@ -1987,7 +1918,7 @@ async function init(){
 
 
 /* =========================================================
-   EVENTS
+   EVENTOS
    ========================================================= */
 
 sendBtn.addEventListener(
@@ -2004,7 +1935,7 @@ sendBtn.addEventListener(
 
     if(!state.ready){
 
-      message(
+      appendMessage(
         ">> El núcleo todavía está indexando.",
         "system"
       );
@@ -2014,7 +1945,7 @@ sendBtn.addEventListener(
     }
 
 
-    message(
+    appendMessage(
       query,
       "user"
     );
@@ -2067,8 +1998,6 @@ queryInput.addEventListener(
    ========================================================= */
 
 init();
-
-})();
 
 </script>
 
