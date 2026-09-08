@@ -3,7 +3,7 @@
  <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>NEXUS-X // Cloud Stream & AI Assistant</title>
+  <title>NEXUS-X // Cloud Stream & AI Assistant Pro</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
     if (window.pdfjsLib) {
@@ -62,7 +62,7 @@
     .action-btn.download{background:linear-gradient(135deg, #39ff88, #00b0ff); color:#000;}
     .action-btn:hover{transform:translateY(-1px); box-shadow:0 0 15px rgba(0,242,254,0.6);}
 
-    /* MODAL DEL VISOR CON IA INTEGRADA */
+    /* MODAL DEL VISOR CON CONTROLES DE PÁGINA */
     #pdfViewerModal {
       display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
       background: rgba(2, 4, 10, 0.92); z-index: 1000; backdrop-filter: blur(8px);
@@ -73,6 +73,10 @@
       background: var(--panel); border: 1px solid var(--stroke); padding: 10px 20px;
       border-radius: 8px 8px 0 0; font-size: 13px; color: var(--accent);
     }
+    .viewer-nav { display: flex; align-items: center; gap: 10px; }
+    .page-btn { background: rgba(0,242,254,0.1); border: 1px solid var(--stroke); color: var(--accent); padding: 4px 10px; border-radius: 4px; cursor: pointer; font-family: var(--mono); font-size: 11px; }
+    .page-btn:hover { background: var(--accent); color: #000; }
+    
     .close-viewer {
       background: #ff5577; color: #fff; border: none; padding: 6px 12px;
       border-radius: 4px; cursor: pointer; font-family: var(--mono); font-weight: bold; font-size: 11px;
@@ -81,10 +85,10 @@
       flex: 1; display: flex; gap: 15px; background: #0b1329; border: 1px solid var(--stroke); border-top: none;
       border-radius: 0 0 8px 8px; overflow: hidden; padding: 15px;
     }
-    .viewer-canvas-pane { flex: 2; overflow: auto; display: flex; justify-content: center; align-items: flex-start; background: rgba(0,0,0,0.3); border-radius: 6px; padding: 10px; }
-    canvas { max-width: 100%; box-shadow: 0 0 20px rgba(0,0,0,0.8); background: white; }
+    .viewer-canvas-pane { flex: 2; overflow: auto; display: flex; flex-direction: column; align-items: center; background: rgba(0,0,0,0.3); border-radius: 6px; padding: 10px; }
+    canvas { max-width: 100%; box-shadow: 0 0 20px rgba(0,0,0,0.8); background: white; margin-top: 10px; }
 
-    /* PANEL LATERAL DE LA IA */
+    /* PANEL LATERAL DE LA IA MEJORADO */
     .viewer-ai-pane {
       flex: 1; background: rgba(4, 9, 18, 0.95); border: 1px solid var(--stroke); border-radius: 6px;
       display: flex; flex-direction: column; padding: 12px; gap: 10px; max-width: 380px;
@@ -116,7 +120,7 @@
  </head>
  <body>
   <header>
-   <div class="logo">NEXUS-X // CLOUD STREAM & AI ASSISTANT</div>
+   <div class="logo">NEXUS-X // CLOUD STREAM & AI ASSISTANT PRO</div>
    <div class="status"><div class="pulse"></div><span id="sysState">Sincronizando con GitHub...</span></div>
   </header>
 
@@ -131,10 +135,15 @@
    </div>
   </div>
 
-  <!-- VISOR ONLINE CON PANEL DE IA INTEGRADO -->
+  <!-- VISOR ONLINE CON PAGINACIÓN Y ASISTENTE IA MEJORADO -->
   <div id="pdfViewerModal">
     <div class="viewer-header">
-      <span id="viewerTitle">📄 Lector Online & Asistente IA</span>
+      <span id="viewerTitle">📄 Lector Online & IA</span>
+      <div class="viewer-nav">
+        <button class="page-btn" id="prevPageBtn">◀ Anterior</button>
+        <span id="pageInfo" style="font-size:11px; color:var(--accent);">Pág. 1 / 1</span>
+        <button class="page-btn" id="nextPageBtn">Siguiente ▶</button>
+      </div>
       <button class="close-viewer" id="closeViewerBtn">CERRAR [X]</button>
     </div>
     <div class="viewer-layout">
@@ -144,10 +153,10 @@
       <div class="viewer-ai-pane">
         <div class="ai-pane-title">🤖 ASISTENTE IA (DOCUMENTO ACTIVO)</div>
         <div class="ai-chat-history" id="aiChatHistory">
-          <div class="ai-msg bot">Hola. Preguntame lo que necesites sobre este manual y te responderé en base al contenido técnico del archivo.</div>
+          <div class="ai-msg bot">Hola. Preguntame sobre este manual y te daré una respuesta detallada basada en el contenido del archivo.</div>
         </div>
         <div class="ai-input-row">
-          <input id="aiQueryInput" type="text" placeholder="Ej: ¿Qué dice sobre los óxidos?" autocomplete="off">
+          <input id="aiQueryInput" type="text" placeholder="Ej: Explicame los puntos clave..." autocomplete="off">
           <button class="ai-send-btn" id="aiSendBtn">PREGUNTAR</button>
         </div>
       </div>
@@ -166,7 +175,12 @@
 
       let repositoryFiles = [];
       let indexedDocs = {};
-      let currentActiveDocText = ""; // Guarda el texto del PDF abierto actualmente para la IA
+      
+      // Variables de control del visor PDF actual
+      let activePdfDoc = null;
+      let activePageNum = 1;
+      let activeTotalPages = 1;
+      let currentActiveDocText = "";
 
       const $ = (s) => document.querySelector(s);
 
@@ -213,7 +227,7 @@
             const pdfDoc = await loadingTask.promise;
             
             let fullText = "";
-            let maxPagesToRead = Math.min(pdfDoc.numPages, 10);
+            let maxPagesToRead = pdfDoc.numPages; // Lee todas las páginas para la IA
             
             for (let i = 1; i <= maxPagesToRead; i++) {
               const page = await pdfDoc.getPage(i);
@@ -231,7 +245,7 @@
         $('#sysState').textContent = "Sistema sincronizado con archivos reales";
         $('#queryInput').disabled = false;
         $('#sendBtn').disabled = false;
-        appendMessage(">> ¡Indexación completada! Buscá un concepto y abri el manual para activar la IA en el visor.", "system");
+        appendMessage(">> ¡Indexación completa! Ya podés consultar y usar el visor completo con paginación e IA.", "system");
       }
 
       function processSmartQuery(query) {
@@ -323,32 +337,51 @@
       async function openCloudPDFViewer(url, fileName) {
         $('#viewerTitle').textContent = `📄 Lector Online & IA - ${fileName}`;
         $('#pdfViewerModal').style.display = 'flex';
-        // Asignar el texto de este documento específico a la variable de la IA
         currentActiveDocText = indexedDocs[fileName] || "";
 
-        // Resetear chat de la IA al abrir un nuevo documento
-        $('#aiChatHistory').innerHTML = `<div class="ai-msg bot">Manual "${fileName}" cargado. ¿Qué te gustaría consultar o que le explique al profesor sobre este documento?</div>`;
+        $('#aiChatHistory').innerHTML = `<div class="ai-msg bot">Manual "${fileName}" cargado correctamente. Consultame lo que necesites sobre este material.</div>`;
 
         try {
           const loadingTask = pdfjsLib.getDocument(url);
-          const pdfDoc = await loadingTask.promise;
-          const page = await pdfDoc.getPage(1);
+          activePdfDoc = await loadingTask.promise;
+          activeTotalPages = activePdfDoc.numPages;
+          activePageNum = 1;
 
-          const canvas = document.getElementById('pdfCanvas');
-          const context = canvas.getContext('2d');
-          const viewport = page.getViewport({ scale: 1.2 });
-
-          canvas.height = viewport.height;
-          canvas.width = viewport.width;
-
-          await page.render({ canvasContext: context, viewport: viewport }).promise;
+          renderPage(activePageNum);
         } catch (e) {
           console.error("Error al cargar el PDF:", e);
           alert("No se pudo cargar el PDF en el visor.");
         }
       }
 
-      // Lógica de respuesta inteligente de la IA basada en el texto del documento activo
+      async function renderPage(num) {
+        if (!activePdfDoc) return;
+        $('#pageInfo').textContent = `Pág. ${num} / ${activeTotalPages}`;
+
+        const page = await activePdfDoc.getPage(num);
+        const canvas = document.getElementById('pdfCanvas');
+        const context = canvas.getContext('2d');
+        const viewport = page.getViewport({ scale: 1.2 });
+
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        await page.render({ canvasContext: context, viewport: viewport }).promise;
+      }
+
+      $('#prevPageBtn').addEventListener('click', () => {
+        if (activePageNum <= 1) return;
+        activePageNum--;
+        renderPage(activePageNum);
+      });
+
+      $('#nextPageBtn').addEventListener('click', () => {
+        if (activePageNum >= activeTotalPages) return;
+        activePageNum++;
+        renderPage(activePageNum);
+      });
+
+      // Lógica de IA mejorada para dar respuestas más completas y fluidas
       function handleAIQuery() {
         const val = $('#aiQueryInput').value.trim();
         if (!val) return;
@@ -368,21 +401,23 @@
           const qLower = val.toLowerCase();
           const words = qLower.split(/\s+/).filter(w => w.length > 2);
 
-          let foundSnippet = "";
-          for (let w of words) {
-            let idx = currentActiveDocText.indexOf(w);
-            if (idx !== -1) {
-              let start = Math.max(0, idx - 60);
-              let end = Math.min(currentActiveDocText.length, idx + 140);
-              foundSnippet = currentActiveDocText.substring(start, end);
-              break;
+          let matchesFound = [];
+          words.forEach(w => {
+            let pos = 0;
+            while ((pos = currentActiveDocText.indexOf(w, pos)) !== -1) {
+              let start = Math.max(0, pos - 80);
+              let end = Math.min(currentActiveDocText.length, pos + 180);
+              matchesFound.push(currentActiveDocText.substring(start, end));
+              pos += w.length;
+              if (matchesFound.length >= 3) break; // Traer hasta 3 fragmentos relevantes para armar una respuesta completa
             }
-          }
+          });
 
-          if (foundSnippet) {
-            botDiv.textContent = `Según el manual analizado, encontré esta referencia clave:\n\n"...${foundSnippet}..."`;
+          if (matchesFound.length > 0) {
+            botDiv.textContent = `Analizando el documento completo, esto es lo que encontré relacionado con "${val}":\n\n` + 
+              matchesFound.map((snippet, idx) => `[Referencia ${idx + 1}]: "...${snippet.trim()}..."`).join("\n\n");
           } else {
-            botDiv.textContent = `Revisé el texto activo del documento pero no encontré una mención directa a "${val}". Probá consultando por otro término técnico clave del manual.`;
+            botDiv.textContent = `Revisé íntegramente las páginas del manual pero no hallé menciones exactas a "${val}". Probá consultando por otro concepto o término técnico presente en el índice.`;
           }
 
           history.appendChild(botDiv);
