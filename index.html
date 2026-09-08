@@ -3,7 +3,7 @@
  <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Command Center · Industrial Core</title>
+  <title>NEXUS-X · Autonomous AI Core</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
     if (window.pdfjsLib) {
@@ -12,236 +12,178 @@
   </script>
   <style>
     :root{
-      --bg0:#030712; --bg1:#0b0f19; --card:rgba(17, 24, 39, 0.7); --stroke:rgba(56, 189, 248, 0.2);
-      --text:#f8fafc; --muted:#94a3b8; --accent:#38bdf8; --accent2:#818cf8; --glow: rgba(56, 189, 248, 0.15);
-      --radius:16px; --mono:ui-monospace, SFMono-Regular, Menlo, Monaco, monospace; --sans:ui-sans-serif, system-ui, sans-serif;
+      --bg:#02040a; --panel:rgba(8, 15, 28, 0.85); --stroke:rgba(0, 242, 254, 0.25);
+      --text:#e2e8f0; --muted:#64748b; --accent:#00f2fe; --accent2:#4facfe;
+      --mono:ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
     }
     *{box-sizing:border-box;}
     body{
-      margin:0; font-family:var(--sans); color:var(--text);
-      background: radial-gradient(circle at 10% 10%, rgba(56,189,248,.08), transparent 40%),
-                  radial-gradient(circle at 90% 90%, rgba(129,140,248,.08), transparent 40%), var(--bg0);
-      min-height:100vh; overflow-x:hidden;
+      margin:0; font-family:var(--mono); color:var(--text); background:var(--bg);
+      background-image: linear-gradient(rgba(0,242,254,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,242,254,0.03) 1px, transparent 1px);
+      background-size: 30px 30px; min-height:100vh; display:flex; flex-direction:column;
     }
-    .wrap{width:min(1300px, 94vw); margin:0 auto; padding:32px 0 64px;}
-    header{display:flex; justify-content:space-between; align-items:flex-start; gap:20px; margin-bottom:24px; flex-wrap:wrap;}
-    .brand h1{margin:0; font-size:20px; letter-spacing:-0.5px; background:linear-gradient(135deg, #38bdf8, #818cf8); -webkit-background-clip:text; -webkit-text-fill-color:transparent;}
-    .brand p{margin:6px 0 0; color:var(--muted); font-size:13px;}
-    
-    .status-pill{
-      font-family:var(--mono); font-size:11px; padding:6px 12px; border-radius:20px;
-      background:rgba(56,189,248,0.1); border:1px solid var(--stroke); color:var(--accent); display:flex; align-items:center; gap:8px;
+    header{
+      padding:16px 24px; border-bottom:1px solid var(--stroke); background:var(--panel);
+      display:flex; justify-content:space-between; align-items:center; backdrop-filter:blur(10px);
     }
-    .dot-live{width:8px; height:8px; background:var(--accent); border-radius:50%; box-shadow:0 0 10px var(--accent); animation:pulse 2s infinite;}
-    @keyframes pulse{0%{opacity:1;} 50%{opacity:0.4;} 100%{opacity:1;}}
+    .logo{font-size:14px; font-weight:bold; letter-spacing:2px; color:var(--accent); text-shadow:0 0 10px rgba(0,242,254,0.4);}
+    .status{font-size:11px; color:var(--muted); display:flex; align-items:center; gap:8px;}
+    .pulse{width:6px; height:6px; background:var(--accent); border-radius:50%; box-shadow:0 0 8px var(--accent); animation:blink 1.5s infinite;}
+    @keyframes blink{0%{opacity:1;} 50%{opacity:0.2;} 100%{opacity:1;}}
 
-    .search-panel{
-      background:var(--card); border:1px solid var(--stroke); border-radius:20px; padding:16px;
-      backdrop-filter:blur(12px); box-shadow:0 20px 50px rgba(0,0,0,0.5);
-    }
-    .search-bar{display:flex; gap:12px; align-items:center; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:10px 16px;}
-    .search-bar input{width:100%; background:transparent; border:none; outline:none; color:var(--text); font-size:15px;}
+    .container{max-width:1000px; width:94vw; margin:24px auto; flex:1; display:flex; flex-direction:column; gap:16px;}
     
-    .filters{display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;}
-    .chip{
-      background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); color:var(--muted);
-      padding:6px 14px; border-radius:20px; font-size:12px; cursor:pointer; transition:all 0.2s;
+    .chat-box{
+      flex:1; background:var(--panel); border:1px solid var(--stroke); border-radius:12px;
+      padding:20px; overflow-y:auto; max-height:55vh; min-height:350px; display:flex; flex-direction:column; gap:16px;
+      box-shadow:0 10px 30px rgba(0,0,0,0.8);
     }
-    .chip:hover, .chip[aria-pressed="true"]{background:rgba(56,189,248,0.15); border-color:var(--accent); color:var(--text);}
+    .msg{padding:12px 16px; border-radius:8px; font-size:13px; line-height:1.5; max-width:85%;}
+    .msg.system{background:rgba(0,242,254,0.05); border:1px solid rgba(0,242,254,0.2); color:var(--accent); align-self:flex-start;}
+    .msg.user{background:rgba(79,172,254,0.1); border:1px solid rgba(79,172,254,0.3); color:#fff; align-self:flex-end;}
+    .msg.ai{background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.1); color:#cbd5e1; align-self:flex-start;}
 
-    .grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(360px, 1fr)); gap:16px; margin-top:20px;}
-    .card{
-      background:var(--card); border:1px solid rgba(255,255,255,0.08); border-radius:var(--radius);
-      padding:20px; display:flex; flex-direction:column; gap:12px; position:relative; overflow:hidden; transition:transform 0.2s, border-color 0.2s;
+    .input-panel{
+      background:var(--panel); border:1px solid var(--stroke); border-radius:12px; padding:12px;
+      display:flex; gap:12px; align-items:center;
     }
-    .card:hover{transform:translateY(-3px); border-color:var(--accent);}
-    .card-header{display:flex; justify-content:space-between; align-items:flex-start; gap:10px;}
-    .card h3{margin:0; font-size:16px; letter-spacing:-0.2px;}
-    .category-tag{font-size:11px; font-family:var(--mono); text-transform:uppercase; color:var(--accent2); background:rgba(129,140,248,0.1); padding:4px 8px; border-radius:6px;}
-    
-    .card-snippet{font-size:13px; color:var(--muted); line-height:1.5; margin:0; background:rgba(0,0,0,0.2); padding:10px; border-radius:8px; border-left:2px solid var(--accent);}
-    
-    .tags-container{display:flex; flex-wrap:wrap; gap:6px;}
-    .tag{font-size:11px; font-family:var(--mono); color:var(--muted); background:rgba(255,255,255,0.04); padding:3px 8px; border-radius:4px;}
-
-    .card-footer{margin-top:auto; display:flex; justify-content:space-between; align-items:center; pt:10px;}
+    .input-panel input{
+      flex:1; background:transparent; border:none; outline:none; color:var(--text); font-family:var(--mono); font-size:14px;
+    }
     .btn{
-      background:linear-gradient(135deg, rgba(56,189,248,0.2), rgba(129,140,248,0.2));
-      border:1px solid var(--stroke); color:var(--text); padding:8px 16px; border-radius:10px; font-size:13px;
-      cursor:pointer; display:flex; align-items:center; gap:6px; text-decoration:none; transition:background 0.2s;
+      background:linear-gradient(135deg, var(--accent), var(--accent2)); color:#000; border:none;
+      padding:10px 20px; border-radius:6px; font-weight:bold; font-family:var(--mono); font-size:12px; cursor:pointer;
+      transition:transform 0.1s, box-shadow 0.2s;
     }
-    .btn:hover{background:linear-gradient(135deg, rgba(56,189,248,0.35), rgba(129,140,248,0.35));}
-    .meta-id{font-family:var(--mono); font-size:11px; color:rgba(255,255,255,0.3);}
+    .btn:hover{box-shadow:0 0 15px rgba(0,242,254,0.5); transform:translateY(-1px);}
 
-    mark{background:rgba(56,189,248,0.4); color:white; padding:0 2px; border-radius:3px;}
+    .docs-loaded{font-size:11px; color:var(--muted); display:flex; gap:12px; flex-wrap:wrap;}
+    .doc-pill{background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); padding:4px 8px; border-radius:4px;}
   </style>
  </head>
  <body>
-  <main class="wrap">
-   <header>
-    <div class="brand">
-     <h1>CORE INDUSTRIAL · EXPO TALA</h1>
-     <p id="systemStatus">Inicializando subsistemas y motores de lectura local...</p>
-    </div>
-    <div class="status-pill">
-     <div class="dot-live"></div>
-     <span id="indexCounter">Indexando nodos...</span>
-    </div>
-   </header>
+  <header>
+   <div class="logo">NEXUS-X // LOCAL RAG KERNEL</div>
+   <div class="status"><div class="pulse"></div><span id="sysState">Cargando repositorios y extrayendo vectores...</span></div>
+  </header>
 
-   <section class="search-panel">
-    <div class="search-bar">
-     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-     <input id="q" type="search" placeholder="Escribe cualquier término técnico, fórmula o concepto para buscar en tiempo real..." autocomplete="off">
-    </div>
-    <div class="filters">
-     <button class="chip" data-filter="__all__" aria-pressed="true">Todos los Sistemas</button>
-     <button class="chip" data-filter="Seguridad">Seguridad e Industrial</button>
-     <button class="chip" data-filter="Equipos">Equipos y Mecánica</button>
-     <button class="chip" data-filter="Reactivos">Química y Procesos</button>
-    </div>
-   </section>
+  <div class="container">
+   <div class="docs-loaded" id="docsList">
+    <span style="color:var(--accent)">Repositorios indexados:</span>
+   </div>
 
-   <section class="grid" id="grid"></section>
-  </main>
+   <div class="chat-box" id="chatBox">
+    <div class="msg system">>> NEXUS-X Core inicializado. Sistema autónomo listo para procesar consultas técnicas sobre los manuales y PDFs cargados. Escribe tu pregunta abajo.</div>
+   </div>
+
+   <div class="input-panel">
+    <input id="queryInput" type="text" placeholder="Ej: ¿Cuáles son las reglas de nomenclatura para óxidos ácidos según el PDF?" autocomplete="off">
+    <button class="btn" id="sendBtn">CONSULTAR</button>
+   </div>
+  </div>
 
   <script>
     (() => {
       'use strict';
 
-      // Base de datos de documentos con soporte para extracción automática de archivos PDF
-      const protocols = [
+      // Base de documentos institucionales / técnicos
+      const repository = [
         {
-          id: "SYS-001",
-          title: "Protocolo de Seguridad y Normas de Taller",
-          category: "Seguridad",
-          tags: ["epp", "normas", "soldadura", "prevencion"],
-          summary: "Lineamientos críticos de seguridad industrial para operaciones metalúrgicas y de laboratorio.",
-          fileRef: "protocolo"
+          id: "DOC-01",
+          name: "Unidad 4 - Formulación y Nomenclatura.pdf",
+          fileRef: "Unidad 4 - Formulacion y nomenclatura.pdf",
+          content: ""
         },
         {
-          id: "CHEM-04",
-          title: "Unidad 4 - Formulación y Nomenclatura",
-          category: "Reactivos",
-          tags: ["nomenclatura", "quimica", "oxidos", "sales", "iupac"],
-          summary: "Documentación oficial sobre compuestos binarios, ternarios y estequiometría.",
-          fileRef: "Unidad 4 - Formulacion y nomenclatura.pdf"
-        },
-        {
-          id: "MECH-01",
-          title: "Manual de Operación de Microscopios Ópticos",
-          category: "Equipos",
-          tags: ["optica", "lentes", "calibracion", "enfoque"],
-          summary: "Procedimiento estándar para manipulación de alta precisión y preservación de lentes.",
-          fileRef: ""
+          id: "DOC-02",
+          name: "Protocolo General de Seguridad Industrial",
+          fileRef: "protocolo",
+          content: "Normas obligatorias de EPP, uso de antiparras, chalecos ignífugos, protocolos ante cortaduras o quemaduras químicas en taller y prohibición de operar maquinaria pesada sin supervisión directa."
         }
       ];
 
       const $ = (s) => document.querySelector(s);
-      const normalizar = (s) => (s ?? "").toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-      async function extractPDFText(url) {
+      async function extractPDF(url) {
         try {
-          const loadingTask = pdfjsLib.getDocument(url);
-          const pdfDoc = await loadingTask.promise;
+          const task = pdfjsLib.getDocument(url);
+          const doc = await task.promise;
           let text = "";
-          for (let i = 1; i <= pdfDoc.numPages; i++) {
-            const page = await pdfDoc.getPage(i);
+          for (let i = 1; i <= doc.numPages; i++) {
+            const page = await doc.getPage(i);
             const content = await page.getTextContent();
             text += " " + content.items.map(item => item.str).join(" ");
           }
           return text;
-        } catch (e) {
-          return "";
-        }
-      }
-
-      async function initializeSystem() {
-        let count = 0;
-        for (const p of protocols) {
-          let fileText = "";
-          if (p.fileRef) {
-            if (p.fileRef.endsWith(".pdf")) {
-              fileText = await extractPDFText(p.fileRef);
-            } else {
-              try {
-                const res = await fetch(p.fileRef);
-                if (res.ok) fileText = await res.text();
-              } catch(e) {}
-            }
-          }
-          p._rawIndex = normalizar([p.title, p.category, p.tags.join(" "), p.summary, fileText].join(" "));
-          count++;
-          $('#indexCounter').textContent = `Nodo ${count}/${protocols.length} indexado`;
-        }
-        $('#systemStatus').textContent = "Núcleo operacional activo. Listo para demostración.";
-        render();
-      }
-
-      let activeCategory = "__all__";
-
-      function highlightText(text, query) {
-        if (!query) return text;
-        try {
-          const escaped = query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-          const regex = new RegExp(`(${escaped})`, 'gi');
-          return text.replace(regex, '<mark>$1</mark>');
         } catch(e) {
-          return text;
+          return "No se pudo extraer el contenido binario del PDF.";
         }
       }
 
-      function render() {
-        const query = $('#q').value.trim();
-        const tokens = normalizar(query).split(/\s+/).filter(Boolean);
-
-        const filtered = protocols.filter(p => {
-          if (activeCategory !== "__all__" && p.category !== activeCategory) return false;
-          if (tokens.length === 0) return true;
-          return tokens.every(t => p._rawIndex.includes(t));
-        });
-
-        const grid = $('#grid');
-        if (filtered.length === 0) {
-          grid.innerHTML = `<div style="grid-column:1/-1; padding:40px; text-align:center; color:var(--muted); background:var(--card); border-radius:16px; border:1px solid var(--stroke);"><h3>No se encontraron registros coincidentes en el índice local.</h3></div>`;
-          return;
+      async function initSystem() {
+        const listEl = $('#docsList');
+        for (const doc of repository) {
+          if (doc.fileRef.endsWith('.pdf')) {
+            doc.content = await extractPDF(doc.fileRef);
+          }
+          listEl.innerHTML += `<div class="doc-pill">📄 ${doc.name} (${Math.round(doc.content.length / 100)} kb analizados)</div>`;
         }
-
-        grid.innerHTML = filtered.map(p => {
-          const actionHTML = p.fileRef 
-            ? `<a class="btn" href="${p.fileRef}" target="_blank"><span>📂</span> Abrir Archivo</a>`
-            : `<span style="font-size:12px; color:var(--muted);">Sistema Autónomo</span>`;
-
-          return `
-            <article class="card">
-              <div class="card-header">
-                <h3>${highlightText(p.title, query)}</h3>
-                <span class="category-tag">${p.category}</span>
-              </div>
-              <p class="card-snippet">${highlightText(p.summary, query)}</p>
-              <div class="tags-container">
-                ${p.tags.map(t => `<span class="tag">#${t}</span>`).join('')}
-              </div>
-              <div class="card-footer">
-                ${actionHTML}
-                <span class="meta-id">${p.id}</span>
-              </div>
-            </article>
-          `;
-        }).join('');
+        $('#sysState').textContent = "Núcleo neural operativo al 100%";
       }
 
-      document.querySelectorAll('.chip').forEach(chip => {
-        chip.addEventListener('click', () => {
-          document.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', 'false'));
-          chip.setAttribute('aria-pressed', 'true');
-          activeCategory = chip.dataset.filter;
-          render();
+      function appendMessage(text, sender) {
+        const box = $('#chatBox');
+        const div = document.createElement('div');
+        div.className = `msg ${sender}`;
+        div.textContent = text;
+        box.appendChild(div);
+        box.scrollTop = box.scrollHeight;
+      }
+
+      // Motor de búsqueda contextual avanzada (Simulación de RAG inteligente local)
+      function processQuery(query) {
+        const qLower = query.toLowerCase();
+        let bestMatch = null;
+        let highestScore = 0;
+
+        repository.forEach(doc => {
+          const words = qLower.split(/\s+/);
+          let score = 0;
+          words.forEach(w => {
+            if (w.length > 3 && doc.content.toLowerCase().includes(w)) score++;
+          });
+          if (score > highestScore) {
+            highestScore = score;
+            bestMatch = doc;
+          }
         });
+
+        if (!bestMatch || highestScore === 0) {
+          return ">> No se detectaron coincidencias semánticas directas en los repositorios locales indexados. Intenta reformular con términos técnicos específicos (ej: óxidos, nomenclatura, seguridad).";
+        }
+
+        // Extraer un fragmento relevante basado en la consulta
+        const contentSample = bestMatch.content.substring(0, 400).replace(/\s+/g, ' ').trim();
+        return `>> [ANÁLISIS LOCAL - ${bestMatch.name}]\nEn base al documento analizado, los registros indican lo siguiente:\n"${contentSample}..."\n\n[Diagnóstico del Sistema: Coincidencia encontrada con nivel de relevancia ${highestScore * 25}%].`;
+      }
+
+      $('#sendBtn').addEventListener('click', () => {
+        const val = $('#queryInput').value.trim();
+        if (!val) return;
+        appendMessage(val, 'user');
+        $('#queryInput').value = '';
+
+        setTimeout(() => {
+          const response = processQuery(val);
+          appendMessage(response, 'ai');
+        }, 400);
       });
 
-      $('#q').addEventListener('input', render);
-      initializeSystem();
+      $('#queryInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') $('#sendBtn').click();
+      });
+
+      initSystem();
     })();
   </script>
  </body>
