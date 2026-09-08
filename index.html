@@ -3,7 +3,7 @@
  <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>NEXUS-X // Cloud Stream & AI Assistant Pro</title>
+  <title>NEXUS-X // GEMINI CORE</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
     if (window.pdfjsLib) {
@@ -24,12 +24,18 @@
     }
     header{
       padding:16px 24px; border-bottom:1px solid var(--stroke); background:var(--panel);
-      display:flex; justify-content:space-between; align-items:center; backdrop-filter:blur(10px);
+      display:flex; justify-content:space-between; align-items:center; backdrop-filter:blur(10px); flex-wrap:wrap; gap:10px;
     }
     .logo{font-size:14px; font-weight:bold; letter-spacing:2px; color:var(--accent); text-shadow:0 0 10px rgba(0,242,254,0.4);}
+    .header-right { display: flex; align-items: center; gap: 15px; }
     .status{font-size:11px; color:var(--muted); display:flex; align-items:center; gap:8px;}
     .pulse{width:6px; height:6px; background:var(--accent); border-radius:50%; box-shadow:0 0 8px var(--accent); animation:blink 1.5s infinite;}
     @keyframes blink{0%{opacity:1;} 50%{opacity:0.2;} 100%{opacity:1;}}
+
+    .api-config-bar { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+    .api-config-bar input { background: rgba(0,0,0,0.5); border: 1px solid var(--stroke); border-radius: 4px; padding: 4px 8px; color: var(--text); font-family: var(--mono); font-size: 11px; width: 140px; outline: none; }
+    .api-config-bar button { background: rgba(0,242,254,0.1); border: 1px solid var(--accent); color: var(--accent); padding: 4px 8px; border-radius: 4px; cursor: pointer; font-family: var(--mono); font-size: 10px; }
+    .api-config-bar button:hover { background: var(--accent); color: #000; }
 
     .container{max-width:1000px; width:94vw; margin:24px auto; flex:1; display:flex; flex-direction:column; gap:16px;}
     
@@ -51,7 +57,7 @@
     .doc-header-row { display: flex; justify-content: space-between; align-items: center; }
     .doc-action-title{color:var(--success); font-size:11px; font-weight:bold;}
     .certer-badge { background: rgba(57,255,136,0.15); color: var(--success); padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; }
-    .doc-snippet { font-size: 11px; color: var(--muted); border-left: 2px solid var(--success); padding-left: 8px; margin: 4px 0; }
+    .doc-snippet { font-size: 11px; color: var(--muted); border-left: 2px solid var(--success); padding-left: 8px; margin: 4px 0; background: rgba(0,0,0,0.2); padding: 6px; border-radius: 0 4px 4px 0;}
     
     .actions-row{display:flex; gap:10px; flex-wrap:wrap; margin-top: 6px;}
     .action-btn{
@@ -62,7 +68,6 @@
     .action-btn.download{background:linear-gradient(135deg, #39ff88, #00b0ff); color:#000;}
     .action-btn:hover{transform:translateY(-1px); box-shadow:0 0 15px rgba(0,242,254,0.6);}
 
-    /* MODAL DEL VISOR CON CONTROLES DE PÁGINA */
     #pdfViewerModal {
       display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
       background: rgba(2, 4, 10, 0.92); z-index: 1000; backdrop-filter: blur(8px);
@@ -88,14 +93,13 @@
     .viewer-canvas-pane { flex: 2; overflow: auto; display: flex; flex-direction: column; align-items: center; background: rgba(0,0,0,0.3); border-radius: 6px; padding: 10px; }
     canvas { max-width: 100%; box-shadow: 0 0 20px rgba(0,0,0,0.8); background: white; margin-top: 10px; }
 
-    /* PANEL LATERAL DE LA IA MEJORADO */
     .viewer-ai-pane {
       flex: 1; background: rgba(4, 9, 18, 0.95); border: 1px solid var(--stroke); border-radius: 6px;
-      display: flex; flex-direction: column; padding: 12px; gap: 10px; max-width: 380px;
+      display: flex; flex-direction: column; padding: 12px; gap: 10px; max-width: 400px;
     }
-    .ai-pane-title { font-size: 11px; color: var(--success); font-weight: bold; border-bottom: 1px solid var(--stroke); padding-bottom: 6px; }
-    .ai-chat-history { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; font-size: 11px; padding-right: 4px; }
-    .ai-msg { padding: 8px 10px; border-radius: 6px; line-height: 1.4; white-space: pre-line; }
+    .ai-pane-title { font-size: 11px; color: var(--success); font-weight: bold; border-bottom: 1px solid var(--stroke); padding-bottom: 6px; display: flex; justify-content: space-between; align-items: center;}
+    .ai-chat-history { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; font-size: 11px; padding-right: 4px; }
+    .ai-msg { padding: 10px 12px; border-radius: 6px; line-height: 1.5; white-space: pre-line; }
     .ai-msg.bot { background: rgba(0,242,254,0.06); border: 1px solid rgba(0,242,254,0.2); color: #cbd5e1; }
     .ai-msg.user { background: rgba(79,172,254,0.1); border: 1px solid rgba(79,172,254,0.3); color: #fff; align-self: flex-end; }
     .ai-input-row { display: flex; gap: 6px; }
@@ -120,13 +124,20 @@
  </head>
  <body>
   <header>
-   <div class="logo">NEXUS-X // CLOUD STREAM & AI ASSISTANT PRO</div>
-   <div class="status"><div class="pulse"></div><span id="sysState">Cargando datos...</span></div>
+   <div class="logo">NEXUS-X // GEMINI CORE</div>
+   <div class="header-right">
+     <div class="api-config-bar">
+       <span>API Key:</span>
+       <input id="apiKeyInput" type="password" placeholder="Pegá tu API Key..." autocomplete="off">
+       <button id="saveApiKeyBtn">GUARDAR</button>
+     </div>
+     <div class="status"><div class="pulse"></div><span id="sysState">Cargando datos...</span></div>
+   </div>
   </header>
 
   <div class="container">
    <div class="chat-box" id="chatBox">
-    <div class="msg system">>> Sistema listo. Escribí un concepto técnico para buscar en los manuales.</div>
+    <div class="msg system">>> Sistema listo. Ingresá tu clave arriba a la derecha (si no lo hiciste) y escribí un concepto técnico para buscar en los manuales.</div>
    </div>
 
    <div class="input-panel">
@@ -135,10 +146,9 @@
    </div>
   </div>
 
-  <!-- VISOR ONLINE CON PAGINACIÓN Y ASISTENTE IA MEJORADO -->
   <div id="pdfViewerModal">
     <div class="viewer-header">
-      <span id="viewerTitle">📄 Lector Online & IA</span>
+      <span id="viewerTitle">📄 Lector Online & Gemini API</span>
       <div class="viewer-nav">
         <button class="page-btn" id="prevPageBtn">◀ Anterior</button>
         <span id="pageInfo" style="font-size:11px; color:var(--accent);">Pág. 1 / 1</span>
@@ -151,9 +161,12 @@
         <canvas id="pdfCanvas"></canvas>
       </div>
       <div class="viewer-ai-pane">
-        <div class="ai-pane-title">🤖 ASISTENTE IA (DOCUMENTO ACTIVO)</div>
+        <div class="ai-pane-title">
+          <span>🤖 ASISTENTE GEMINI AI</span>
+          <span style="color:var(--success); font-size:9px;" id="apiStatusBadge">[API LISTA]</span>
+        </div>
         <div class="ai-chat-history" id="aiChatHistory">
-          <div class="ai-msg bot">Hola. Preguntame sobre este manual y te daré una respuesta detallada basada en el contenido del archivo.</div>
+          <div class="ai-msg bot">Manual sincronizado con Gemini. Preguntame lo que necesites sobre este documento.</div>
         </div>
         <div class="ai-input-row">
           <input id="aiQueryInput" type="text" placeholder="Ej: Explicame los puntos clave..." autocomplete="off">
@@ -173,13 +186,31 @@
         branch: "main"
       };
 
+      // Recuperar clave guardada en el navegador si existe
+      let GEMINI_API_KEY = localStorage.getItem('nexus_gemini_key') || "";
+      if (GEMINI_API_KEY) {
+        document.getElementById('apiKeyInput').value = GEMINI_API_KEY;
+      }
+
+      document.getElementById('saveApiKeyBtn').addEventListener('click', () => {
+        const keyVal = document.getElementById('apiKeyInput').value.trim();
+        if(keyVal) {
+          localStorage.setItem('nexus_gemini_key', keyVal);
+          GEMINI_API_KEY = keyVal;
+          alert("¡API Key guardada de forma segura en tu navegador!");
+        } else {
+          alert("Por favor ingresa una clave válida.");
+        }
+      });
+
       let repositoryFiles = [];
-      let indexedDocs = {};
+      let parsedParagraphs = {};  
+      let rawFullTexts = {};
       
       let activePdfDoc = null;
       let activePageNum = 1;
       let activeTotalPages = 1;
-      let currentActiveDocText = "";
+      let currentActiveFullText = "";
 
       const $ = (s) => document.querySelector(s);
 
@@ -224,19 +255,24 @@
             const loadingTask = pdfjsLib.getDocument(url);
             const pdfDoc = await loadingTask.promise;
             
-            let fullText = "";
-            let maxPagesToRead = pdfDoc.numPages;
+            let paragraphs = [];
+            let fullDocText = "";
             
-            for (let i = 1; i <= maxPagesToRead; i++) {
+            for (let i = 1; i <= pdfDoc.numPages; i++) {
               const page = await pdfDoc.getPage(i);
               const textContent = await page.getTextContent();
-              fullText += textContent.items.map(item => item.str).join(" ") + " ";
+              let pageText = textContent.items.map(item => item.str).join(" ");
+              fullDocText += pageText + "\n";
+              let chunks = pageText.split(/(?:\.|\n)+/).map(c => c.trim()).filter(c => c.length > 25);
+              paragraphs.push(...chunks);
             }
 
-            indexedDocs[fileName] = fullText.toLowerCase();
+            parsedParagraphs[fileName] = paragraphs;
+            rawFullTexts[fileName] = fullDocText;
           } catch (e) {
             console.warn(`No se pudo indexar el archivo ${fileName}:`, e);
-            indexedDocs[fileName] = "";
+            parsedParagraphs[fileName] = [];
+            rawFullTexts[fileName] = "";
           }
         }
 
@@ -251,39 +287,43 @@
         if (searchWords.length === 0) return [];
 
         let results = [];
-        for (let fileName of repositoryFiles) {
-          let text = indexedDocs[fileName] || "";
-          let matchCount = 0;
-          let snippet = "";
 
-          searchWords.forEach(word => {
-            const root = word.slice(0, 4);
-            let regex = new RegExp(root, 'g');
-            let matches = text.match(regex);
-            if (matches) matchCount += matches.length;
+        for (let fileName of repositoryFiles) {
+          let paragraphs = parsedParagraphs[fileName] || [];
+          let bestParagraph = "";
+          let maxScore = 0;
+
+          paragraphs.forEach(par => {
+            let score = 0;
+            let parLower = par.toLowerCase();
+            searchWords.forEach(word => {
+              if (parLower.includes(word)) {
+                score += (word.length * 2);
+              }
+            });
+            if (score > maxScore) {
+              maxScore = score;
+              bestParagraph = par;
+            }
           });
 
-          if (fileName.toLowerCase().includes(searchWords[0])) matchCount += 10;
+          if (fileName.toLowerCase().includes(searchWords[0])) {
+            maxScore += 25;
+          }
 
-          if (matchCount > 0) {
-            let certainty = Math.min(Math.floor(matchCount * 8 + 30), 98);
-            let snippetIndex = text.indexOf(searchWords[0]);
-            if (snippetIndex !== -1) {
-              let start = Math.max(0, snippetIndex - 40);
-              let end = Math.min(text.length, snippetIndex + 80);
-              snippet = "..." + text.substring(start, end) + "...";
-            } else {
-              snippet = "Término encontrado en el interior del manual.";
-            }
+          if (maxScore > 0) {
+            let certainty = Math.min(Math.floor(maxScore * 4 + 40), 99);
+            let cleanSnippet = bestParagraph ? `"${bestParagraph.substring(0, 180)}..."` : "Contenido técnico relevante indexado.";
 
             results.push({
               fileName: fileName,
               certainty: certainty,
-              snippet: snippet,
+              snippet: cleanSnippet,
               fileUrl: `https://raw.githubusercontent.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/${GITHUB_CONFIG.branch}/${fileName}`
             });
           }
         }
+
         results.sort((a, b) => b.certainty - a.certainty);
         return results;
       }
@@ -298,11 +338,11 @@
         setTimeout(() => {
           const matches = processSmartQuery(val);
           if (matches.length === 0) {
-            appendMessage(`>> No se encontró ninguna mención a "${val}" dentro de los documentos del repositorio.`, 'error');
+            appendMessage(`>> No se encontró ninguna mención limpia a "${val}" dentro de los documentos.`, 'error');
             return;
           }
 
-          const aiMsg = appendMessage(`>> RESULTADOS EN DOCUMENTOS REALES\nSe analizó el contenido en busca de: "${val}"`, 'ai');
+          const aiMsg = appendMessage(`>> BÚSQUEDA INTELIGENTE COMPLETADA\nConcepto analizado: "${val}"`, 'ai');
 
           matches.forEach(match => {
             const card = document.createElement('div');
@@ -312,7 +352,7 @@
                 <span class="doc-action-title">📄 ${match.fileName}</span>
                 <span class="certer-badge">Certeza: ${match.certainty}%</span>
               </div>
-              <div class="doc-snippet">"${match.snippet}"</div>
+              <div class="doc-snippet">${match.snippet}</div>
               <div class="actions-row">
                 <button class="action-btn open-online-btn"><span>🌐</span> ABRIR ONLINE</button>
                 <a href="${match.fileUrl}" download="${match.fileName}" class="action-btn download"><span>💾</span> DESCARGAR AL TARRITO (PDF)</a>
@@ -332,11 +372,11 @@
       }
 
       async function openCloudPDFViewer(url, fileName) {
-        $('#viewerTitle').textContent = `📄 Lector Online & IA - ${fileName}`;
+        $('#viewerTitle').textContent = `📄 Lector Online & Gemini API - ${fileName}`;
         $('#pdfViewerModal').style.display = 'flex';
-        currentActiveDocText = indexedDocs[fileName] || "";
+        currentActiveFullText = rawFullTexts[fileName] || "";
 
-        $('#aiChatHistory').innerHTML = `<div class="ai-msg bot">Manual "${fileName}" cargado correctamente. Consultame lo que necesites sobre este material.</div>`;
+        $('#aiChatHistory').innerHTML = `<div class="ai-msg bot">Manual "${fileName}" cargado. Gemini está listo para responder tus consultas sobre este documento.</div>`;
 
         try {
           const loadingTask = pdfjsLib.getDocument(url);
@@ -378,8 +418,7 @@
         renderPage(activePageNum);
       });
 
-      // Lógica de IA mejorada para explicar el documento completo de forma profunda
-      function handleAIQuery() {
+      async function handleAIQuery() {
         const val = $('#aiQueryInput').value.trim();
         if (!val) return;
 
@@ -391,38 +430,41 @@
         $('#aiQueryInput').value = '';
         history.scrollTop = history.scrollHeight;
 
-        setTimeout(() => {
-          const botDiv = document.createElement('div');
-          botDiv.className = 'ai-msg bot';
+        const botDiv = document.createElement('div');
+        botDiv.className = 'ai-msg bot';
+        botDiv.textContent = "Gemini está procesando tu consulta...";
+        history.appendChild(botDiv);
+        history.scrollTop = history.scrollHeight;
 
-          const qLower = val.toLowerCase();
-          const words = qLower.split(/\s+/).filter(w => w.length > 2);
+        const activeKey = localStorage.getItem('nexus_gemini_key') || GEMINI_API_KEY;
+        if (!activeKey) {
+          botDiv.textContent = "⚠️ Primero debés ingresar y guardar tu API Key en el campo superior derecho de la pantalla.";
+          return;
+        }
 
-          let matchesFound = [];
-          words.forEach(w => {
-            let pos = 0;
-            while ((pos = currentActiveDocText.indexOf(w, pos)) !== -1) {
-              let start = Math.max(0, pos - 120);
-              let end = Math.min(currentActiveDocText.length, pos + 280);
-              let snippet = currentActiveDocText.substring(start, end).trim();
-              if (!matchesFound.includes(snippet)) {
-                matchesFound.push(snippet);
-              }
-              pos += w.length;
-              if (matchesFound.length >= 4) break;
-            }
+        try {
+          const promptText = `Actúa como un asistente técnico experto integrado en un entorno escolar. Basándote estrictamente en el siguiente texto extraído del documento actual, responde con precisión quirúrgica, claridad y nivel técnico a la pregunta del usuario.\n\nTEXTO DEL MANUAL:\n${currentActiveFullText.substring(0, 20000)}\n\nPREGUNTA DEL USUARIO: ${val}`;
+          
+          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
           });
 
-          if (matchesFound.length > 0) {
-            botDiv.textContent = `📑 Análisis detallado del manual sobre "${val}":\n\n` + 
-              matchesFound.map((snippet, idx) => `• Aspecto ${idx + 1}:\n"${snippet}..."`).join("\n\n");
+          const data = await response.json();
+          const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          
+          if (aiText) {
+            botDiv.textContent = aiText;
           } else {
-            botDiv.textContent = `Revisé el texto completo del documento pero no encontré menciones detalladas sobre "${val}". Probá consultando por otro concepto o término técnico del manual.`;
+            botDiv.textContent = "Gemini no pudo procesar una respuesta con los datos de este documento.";
           }
+        } catch (err) {
+          console.error(err);
+          botDiv.textContent = "Error de conexión al intentar comunicarse con la API de Gemini.";
+        }
 
-          history.appendChild(botDiv);
-          history.scrollTop = history.scrollHeight;
-        }, 300);
+        history.scrollTop = history.scrollHeight;
       }
 
       $('#closeViewerBtn').addEventListener('click', () => {
