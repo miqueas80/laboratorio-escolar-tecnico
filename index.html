@@ -51,8 +51,8 @@
     .doc-action-title{color:var(--success); font-size:11px; font-weight:bold;}
     .open-btn{
       display:inline-flex; align-items:center; gap:8px; padding:8px 14px; background:linear-gradient(135deg, var(--accent), var(--accent2));
-      color:#000; text-decoration:none; border-radius:6px; font-weight:bold; font-size:11px; width:fit-content;
-      box-shadow:0 0 10px rgba(0,242,254,0.3); transition:transform 0.1s;
+      color:#000; text-decoration:none; border-radius:6px; font-weight:bold; font-size:11px; width:fit-content; cursor:pointer;
+      box-shadow:0 0 10px rgba(0,242,254,0.3); transition:transform 0.1s; border:none;
     }
     .open-btn:hover{transform:translateY(-1px); box-shadow:0 0 15px rgba(0,242,254,0.6);}
 
@@ -102,10 +102,10 @@
       let repository = [];
       const $ = (s) => document.querySelector(s);
 
-      // Abrir base de datos interna IndexedDB para almacenamiento profundo offline
+      // Abrir base de datos interna IndexedDB con soporte para almacenar blobs binarios de los PDFs
       function openDB() {
         return new Promise((resolve, reject) => {
-          const request = indexedDB.open("NexusXDatabase", 1);
+          const request = indexedDB.open("NexusXDatabase", 2);
           request.onerror = () => reject(request.error);
           request.onsuccess = () => resolve(request.result);
           request.onupgradeneeded = (event) => {
@@ -139,10 +139,10 @@
         });
       }
 
-      async function extractPDF(url) {
+      async function extractPDFData(arrayBuffer) {
         try {
-          const task = pdfjsLib.getDocument(url);
-          const doc = await task.promise;
+          const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+          const doc = await loadingTask.promise;
           let text = "";
           for (let i = 1; i <= doc.numPages; i++) {
             const page = await doc.getPage(i);
@@ -151,27 +151,24 @@
           }
           return text;
         } catch(e) {
-          console.warn("Error leyendo PDF:", url);
+          console.warn("Error extrayendo texto del PDF:", e);
           return "";
         }
       }
 
       async function initializeSystem() {
         try {
-          // Intentamos primero cargar desde la memoria profunda del navegador (Offline Mode)
           const cachedDocs = await getAllDocsFromCache();
-          
           if (cachedDocs && cachedDocs.length > 0) {
             repository = cachedDocs;
-            $('#sysState').textContent = "Núcleo Offline Activo (Caché Local)";
-            enableApp(`>> Sincronizado desde memoria interna. ${repository.length} documentos listos sin internet.`);
+            $('#sysState').textContent = "Núcleo Offline Activo (Caché Interna)";
+            enableApp(`>> Sincronizado desde memoria interna. ${repository.length} documentos listos 100% offline.`);
             return;
           }
         } catch (e) {
-          console.log("No hay caché previa, intentando conectar a GitHub...");
+          console.log("No hay caché previa, conectando a GitHub...");
         }
 
-        // Si no hay caché local, intentamos descargar de GitHub por primera vez
         const treeUrl = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/git/trees/${GITHUB_CONFIG.branch}?recursive=1`;
 
         try {
@@ -192,29 +189,32 @@
 
           for (const file of pdfFiles) {
             const rawUrl = `https://raw.githubusercontent.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/${GITHUB_CONFIG.branch}/${file.path}`;
-            const githubViewUrl = `https://github.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/blob/${GITHUB_CONFIG.branch}/${file.path}`;
             const fileName = file.path.split('/').pop();
 
             $('#sysState').textContent = `Procesando: ${fileName}`;
-            const textContent = await extractPDF(rawUrl);
+            
+            // Descargamos el archivo binario completo para guardarlo en la netbook
+            const pdfRes = await fetch(rawUrl);
+            const arrayBuffer = await pdfRes.arrayBuffer();
+            const textContent = await extractPDFData(arrayBuffer);
 
             const docObj = {
               id: file.path,
               name: fileName,
-              fileRef: githubViewUrl,
+              blobData: arrayBuffer, // Guardamos el PDF binario real adentro del almacenamiento interno
               content: textContent
             };
 
             repository.push(docObj);
-            await saveDocToCache(docObj); // Guardado profundo en la netbook
+            await saveDocToCache(docObj);
           }
 
-          $('#sysState').textContent = "Núcleo neural operativo (Guardado offline)";
-          enableApp(`>> Descarga y almacenamiento profundo completado.\n>> Se indexaron ${repository.length} documentos. Ya podés usarlo sin internet.`);
+          $('#sysState').textContent = "Núcleo neural operativo (Offline total)";
+          enableApp(`>> Descarga y almacenamiento profundo completado.\n>> Se indexaron ${repository.length} documentos. Ya funciona sin internet.`);
 
         } catch (err) {
           $('#sysState').textContent = "Sin conexión / Sin caché";
-          appendMessage(`>> ERROR: No hay conexión a internet ni documentos en la caché local. Conectate una vez por única vez para realizar la bajada inicial.`, "error");
+          appendMessage(`>> ERROR: No hay conexión a internet ni documentos guardados. Conectate una vez para realizar la bajada inicial.`, "error");
         }
       }
 
@@ -288,11 +288,16 @@
             card.className = 'doc-action-card';
             card.innerHTML = `
               <div class="doc-action-title">📄 ARCHIVO FUENTE: ${result.doc.name}</div>
-              <a href="${result.doc.fileRef}" target="_blank" rel="noopener" class="open-btn">
-                <span>📂</span> ABRIR PDF ORIGINAL
-              </a>
+              <button class="open-btn" data-docid="${result.doc.id}">
+                <span>📂</span> ABRIR PDF DESDE MEMORIA LOCAL
+              </button>
             `;
             aiMsg.appendChild(card);
+
+            // Asignamos la acción directa offline al botón creado dinámicamente
+            card.querySelector('.open-btn').addEventListener('click', () => {
+              openOfflinePDF(result.doc);
+            });
           }
 
           const box = $('#chatBox');
@@ -300,6 +305,13 @@
           $('#sendBtn').disabled = false;
           $('#queryInput').focus();
         }, 300);
+      }
+
+      function openOfflinePDF(doc) {
+        // Creamos un Blob interno con el archivo guardado en la netbook y lo abrimos en una pestaña nueva del navegador
+        const blob = new Blob([doc.blobData], { type: 'application/pdf' });
+        const blobUrl = URL.createObjectURL(blob);
+        window.open(blobUrl, '_blank');
       }
 
       $('#sendBtn').addEventListener('click', handleQuerySubmission);
