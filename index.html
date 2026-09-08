@@ -3,7 +3,7 @@
  <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>NEXUS-X // Local RAG Core</title>
+  <title>NEXUS-X // Autonomous RAG Core</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
     if (window.pdfjsLib) {
@@ -42,6 +42,7 @@
     .msg.system{background:rgba(0,242,254,0.05); border:1px solid rgba(0,242,254,0.2); color:var(--accent); align-self:flex-start;}
     .msg.user{background:rgba(79,172,254,0.1); border:1px solid rgba(79,172,254,0.3); color:#fff; align-self:flex-end;}
     .msg.ai{background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.1); color:#cbd5e1; align-self:flex-start;}
+    .msg.error{background:rgba(255,85,119,0.05); border:1px solid rgba(255,85,119,0.3); color:#ff9bad; align-self:flex-start;}
 
     .input-panel{
       background:var(--panel); border:1px solid var(--stroke); border-radius:12px; padding:12px;
@@ -68,7 +69,7 @@
  <body>
   <header>
    <div class="logo">NEXUS-X // LOCAL RAG KERNEL</div>
-   <div class="status"><div class="pulse"></div><span id="sysState">Cargando repositorios y extrayendo vectores...</span></div>
+   <div class="status"><div class="pulse"></div><span id="sysState">Escaneando repositorio en GitHub...</span></div>
   </header>
 
   <div class="container">
@@ -77,11 +78,11 @@
    </div>
 
    <div class="chat-box" id="chatBox">
-    <div class="msg system">>> NEXUS-X Core inicializado. Sistema autónomo listo para procesar consultas técnicas sobre los manuales y PDFs cargados. Escribe tu pregunta abajo o abre los documentos directamente arriba.</div>
+    <div class="msg system">>> NEXUS-X Core inicializado. Buscando documentos automáticamente en el repositorio...</div>
    </div>
 
    <div class="input-panel">
-    <input id="queryInput" type="text" placeholder="Ej: ¿Cuáles son las reglas de nomenclatura o componentes del PDF?" autocomplete="off">
+    <input id="queryInput" type="text" placeholder="Escribe tu consulta técnica sobre los documentos..." autocomplete="off">
     <button class="btn" id="sendBtn">CONSULTAR</button>
    </div>
   </div>
@@ -90,22 +91,14 @@
     (() => {
       'use strict';
 
-      // Configura aquí tus archivos o carpetas (ej: "material/archivo.pdf")
-      const repository = [
-        {
-          id: "DOC-01",
-          name: "Unidad 4 - Formulación y Nomenclatura.pdf",
-          fileRef: "Unidad 4 - Formulacion y nomenclatura.pdf",
-          content: ""
-        },
-        {
-          id: "DOC-02",
-          name: "Protocolo General de Seguridad Industrial",
-          fileRef: "protocolo",
-          content: "Normas obligatorias de EPP, uso de antiparras, chalecos ignífugos, protocolos ante cortaduras o quemaduras químicas en taller y prohibición de operar maquinaria pesada sin supervisión directa."
-        }
-      ];
+      // Configura aquí tu usuario y nombre de repositorio en GitHub
+      const GITHUB_CONFIG = {
+        owner: "miqueas80",
+        repo: "laboratorio-escolar",
+        branch: "main"
+      };
 
+      let repository = [];
       const $ = (s) => document.querySelector(s);
 
       async function extractPDF(url) {
@@ -120,23 +113,60 @@
           }
           return text;
         } catch(e) {
-          return "No se pudo extraer el contenido binario del PDF.";
+          console.warn("Error leyendo PDF:", url);
+          return "";
         }
       }
 
-      async function initSystem() {
+      async function discoverAndIndexFiles() {
         const listEl = $('#docsList');
-        for (const doc of repository) {
-          if (doc.fileRef.endsWith('.pdf')) {
-            doc.content = await extractPDF(doc.fileRef);
+        const treeUrl = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/git/trees/${GITHUB_CONFIG.branch}?recursive=1`;
+
+        try {
+          const res = await fetch(treeUrl);
+          if (!res.ok) throw new Error("No se pudo conectar con la API de GitHub.");
+          const data = await res.json();
+          
+          // Filtramos solo los archivos PDF dentro del repositorio
+          const pdfFiles = (data.tree || []).filter(item => item.type === "blob" && item.path.toLowerCase().endsWith('.pdf'));
+
+          if (pdfFiles.length === 0) {
+            $('#sysState').textContent = "No se encontraron PDFs";
+            appendMessage(">> ADVERTENCIA: No se detectaron archivos .pdf en el repositorio de GitHub.", "error");
+            return;
           }
-          listEl.innerHTML += `
-            <a href="${doc.fileRef}" target="_blank" rel="noopener" class="doc-pill">
-              <span>📄</span> ${doc.name} 
-              <span style="font-size:10px; color:var(--accent);">[ABRIR PDF]</span>
-            </a>`;
+
+          $('#sysState').textContent = `Procesando ${pdfFiles.length} documentos...`;
+
+          for (const file of pdfFiles) {
+            const rawUrl = `https://raw.githubusercontent.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/${GITHUB_CONFIG.branch}/${file.path}`;
+            const githubViewUrl = `https://github.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/blob/${GITHUB_CONFIG.branch}/${file.path}`;
+            const fileName = file.path.split('/').pop();
+
+            $('#sysState').textContent = `Extrayendo: ${fileName}`;
+            const textContent = await extractPDF(rawUrl);
+
+            repository.push({
+              id: file.path,
+              name: fileName,
+              fileRef: githubViewUrl,
+              content: textContent
+            });
+
+            listEl.innerHTML += `
+              <a href="${githubViewUrl}" target="_blank" rel="noopener" class="doc-pill">
+                <span>📄</span> ${fileName} 
+                <span style="font-size:10px; color:var(--accent);">[ABRIR]</span>
+              `;
+          }
+
+          $('#sysState').textContent = "Núcleo neural operativo al 100%";
+          appendMessage(`>> Sincronización exitosa. Se indexaron ${repository.length} documentos automáticamente desde GitHub.`, "system");
+
+        } catch (err) {
+          $('#sysState').textContent = "Error de indexación";
+          appendMessage(`>> Error al escanear GitHub: ${err.message}. Comprueba tu conexión o los nombres de usuario/repositorio.`, "error");
         }
-        $('#sysState').textContent = "Núcleo neural operativo al 100%";
       }
 
       function appendMessage(text, sender) {
@@ -149,6 +179,10 @@
       }
 
       function processQuery(query) {
+        if (repository.length === 0) {
+          return ">> No hay documentos indexados en este momento para procesar la consulta.";
+        }
+
         const qLower = query.toLowerCase();
         let bestMatch = null;
         let highestScore = 0;
@@ -166,11 +200,11 @@
         });
 
         if (!bestMatch || highestScore === 0) {
-          return ">> No se detectaron coincidencias semánticas directas en los repositorios locales indexados. Intenta reformular con términos técnicos específicos (ej: óxidos, nomenclatura, seguridad) o abre el PDF directamente arriba.";
+          return ">> No se detectaron coincidencias directas en los PDFs indexados. Prueba usando palabras clave más específicas que aparezcan en los manuales.";
         }
 
-        const contentSample = bestMatch.content.substring(0, 350).replace(/\s+/g, ' ').trim();
-        return `>> [COINCIDENCIA ENCONTRADA: ${bestMatch.name}]\n\n"${contentSample}..."\n\n[Sugerencia: Puedes hacer clic en el botón superior "${bestMatch.name}" para ver el documento original completo].`;
+        const contentSample = bestMatch.content.substring(0, 400).replace(/\s+/g, ' ').trim();
+        return `>> [COINCIDENCIA ENCONTRADA EN: ${bestMatch.name}]\n\n"${contentSample}..."\n\n[Acción: Haz clic arriba en el botón del archivo "${bestMatch.name}" para ver el documento completo].`;
       }
 
       $('#sendBtn').addEventListener('click', () => {
@@ -189,7 +223,8 @@
         if (e.key === 'Enter') $('#sendBtn').click();
       });
 
-      initSystem();
+      // Arrancamos el escaneo automático al cargar
+      discoverAndIndexFiles();
     })();
   </script>
  </body>
