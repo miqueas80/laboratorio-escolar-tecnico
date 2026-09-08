@@ -3,7 +3,7 @@
  <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>NEXUS-X // QUANTUM CORE v4.8</title>
+  <title>NEXUS-X // QUANTUM CORE v4.9</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
     if (window.pdfjsLib) {
@@ -161,7 +161,6 @@
 
       const GITHUB_CONFIG = { owner: "miqueas80", repo: "laboratorio-escolar-tecnico", branch: "main" };
       
-      // FIX: Corrección de un corchete erróneo en el getItem que podía causar fallos silenciosos
       let globalApiKey = localStorage.getItem('nexus_gemini_key') || "";
       if (document.getElementById('apiKeyInput')) {
         document.getElementById('apiKeyInput').value = globalApiKey;
@@ -179,14 +178,13 @@
       });
 
       let repositoryFiles = [];
-      // OPTIMIZACIÓN: Almacenaremos tanto el texto original como el normalizado
       let repositoryTexts = {}; 
 
       let activePdfDoc = null;
       let activePageNum = 1;
       let activeFileName = "";
-      let activePagesCache = []; // Para display
-      let activeNormCache = [];  // Para búsqueda
+      let activePagesCache = [];
+      let activeNormCache = [];
       let isRenderingPage = false;
 
       const $ = (s) => document.querySelector(s);
@@ -243,11 +241,9 @@
               const txt = await page.getTextContent();
               const textStr = txt.items.map(it => it.str).join(" ");
               
-              // OPTIMIZACIÓN: Pre-normalizar al descargar (evita congelamiento al buscar)
               pagesOriginal.push(textStr);
               pagesNormalized.push(normalizeStr(textStr));
               
-              // OPTIMIZACIÓN: "Respirar" cada 5 páginas para no congelar la interfaz (Yielding)
               if (i % 5 === 0) {
                   await new Promise(resolve => setTimeout(resolve, 5));
               }
@@ -336,11 +332,9 @@
           
           let matchedPagesInfo = [];
           
-          // OPTIMIZACIÓN: Buscar directamente en la caché pre-normalizada
           activeNormCache.forEach((pageNorm, idx) => {
             const matchCount = queryWords.filter(word => pageNorm.includes(word)).length;
             if (pageNorm.includes(queryNorm) || (queryWords.length > 0 && matchCount >= Math.min(2, queryWords.length))) {
-              // Devolver fragmento del texto original, no el normalizado
               matchedPagesInfo.push(`Página ${idx+1}: ${activePagesCache[idx].substring(0, 400)}`);
             }
           });
@@ -355,7 +349,8 @@
 
           const prompt = `Sos un asistente técnico experto y preciso. Ayuda al usuario respondiendo a su consulta basándote en este contenido del manual "${activeFileName}", e Indícale explícitamente en qué página exacta se encuentra:\n\n${contextText.substring(0, 12000)}\n\nConsulta del usuario: ${val}`;
           
-          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
+          // ACTUALIZADO: Endpoint a gemini-2.5-flash
+          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ 
@@ -386,7 +381,6 @@
         addMsg('#mainChatBox', val, 'user');
         $('#mainQueryInput').value = '';
 
-        // Usamos setTimeout para permitir que el DOM renderice el mensaje del usuario antes del bloqueo de búsqueda
         setTimeout(() => {
           const queryNorm = normalizeStr(val);
           const queryWords = queryNorm.split(/\s+/).filter(w => w.length > 2);
@@ -395,7 +389,6 @@
 
           let matchingFiles = [];
           for (let file of repositoryFiles) {
-            // OPTIMIZACIÓN: Consultar contra array pre-normalizado
             let pagesNorm = repositoryTexts[file]?.normalized || [];
             let found = pagesNorm.some(pageNorm => {
               const matchCount = queryWords.filter(w => pageNorm.includes(w)).length;
