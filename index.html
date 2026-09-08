@@ -85,34 +85,45 @@
 
     .viewer-close { background:var(--danger); color:#fff; border:none; padding:6px 12px; border-radius:4px; font-weight:bold; cursor:pointer; font-size:11px; }
     
-    /* MODIFICACIÓN: Ajuste de columnas para darle prioridad total al visor del PDF */
-    .viewer-body { flex:1; display:grid; grid-template-columns: 1fr 310px; background:#040812; border:1px solid var(--stroke); border-top:none; border-radius:0 0 8px 8px; overflow:hidden; }
+    .viewer-body { flex:1; display:grid; grid-template-columns: 1fr 340px; background:#040812; border:1px solid var(--stroke); border-top:none; border-radius:0 0 8px 8px; overflow:hidden; }
     @media(max-width:900px){ .viewer-body { display:flex; flex-direction:column; } }
     
-    /* MODIFICACIÓN: Eliminados los márgenes negros del contenedor del PDF */
-    .canvas-container { overflow:auto; display:flex; justify-content:center; align-items:flex-start; padding:4px; background:#000; width:100%; height:100%; }
-    canvas { width:100% !important; height:auto !important; max-width:100%; box-shadow:0 0 15px rgba(0,0,0,0.8); background:white; display:block; }
+    /* Contenedor del PDF centrado y corregido */
+    .canvas-container { overflow:auto; display:flex; justify-content:center; align-items:flex-start; padding:12px; background:#080d1a; width:100%; height:100%; }
+    canvas { max-width:100%; height:auto; box-shadow:0 0 20px rgba(0,0,0,0.9); background:white; display:block; }
     
-    .viewer-sidebar-chat { background:rgba(3,7,14,0.98); border-left:1px solid var(--stroke); display:flex; flex-direction:column; padding:12px; gap:8px; position:relative; }
-    .v-chat-history { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:10px; font-size:11px; scroll-behavior:smooth; }
+    .viewer-sidebar-chat { background:rgba(3,7,14,0.98); border-left:1px solid var(--stroke); display:flex; flex-direction:column; padding:12px; gap:8px; overflow:hidden; }
     
-    /* Scrollbar personalizada para fácil visibilidad */
-    .v-chat-history::-webkit-scrollbar { width: 6px; }
-    .v-chat-history::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
-    .v-chat-history::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 4px; }
+    /* BARRA DE DESPLAZAMIENTO TRADICIONAL Y BIEN VISIBLE EN EL CHAT */
+    .v-chat-history { 
+      flex:1; 
+      overflow-y:scroll; 
+      display:flex; 
+      flex-direction:column; 
+      gap:10px; 
+      font-size:11px; 
+      padding-right:6px; 
+    }
+    .v-chat-history::-webkit-scrollbar { 
+      width: 14px; 
+    }
+    .v-chat-history::-webkit-scrollbar-track { 
+      background: rgba(255, 255, 255, 0.08); 
+      border-radius: 4px; 
+      border: 1px solid var(--stroke); 
+    }
+    .v-chat-history::-webkit-scrollbar-thumb { 
+      background: var(--accent); 
+      border-radius: 4px; 
+      border: 2px solid #010308; 
+    }
+    .v-chat-history::-webkit-scrollbar-thumb:hover { 
+      background: #ffffff; 
+    }
 
     .v-msg { padding:10px 12px; border-radius:6px; line-height:1.5; white-space:pre-line; }
     .v-msg.bot { background:rgba(0,242,254,0.05); border:1px solid rgba(0,242,254,0.2); color:#cbd5e1; }
     .v-msg.user { background:rgba(79,172,254,0.1); border:1px solid rgba(79,172,254,0.3); color:#fff; align-self:flex-end; }
-    
-    /* Botón flotante para bajar rápido en la conversación */
-    .scroll-down-btn {
-      position: absolute; bottom: 50px; right: 20px; background: var(--accent); color: #000;
-      border: none; width: 28px; height: 28px; border-radius: 50%; font-weight: bold;
-      cursor: pointer; display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 0 10px var(--accent-glow); z-index: 10; opacity: 0.8; transition: opacity 0.2s;
-    }
-    .scroll-down-btn:hover { opacity: 1; transform: scale(1.1); }
 
     .v-input-row { display:flex; gap:6px; }
     .v-input-row input { flex:1; background:rgba(0,0,0,0.6); border:1px solid var(--stroke); border-radius:4px; padding:8px; color:var(--text); font-family:var(--mono); font-size:11px; outline:none; }
@@ -165,7 +176,6 @@
         <div class="v-chat-history" id="modalChatHistory">
           <div class="v-msg bot">Documento cargado. Preguntale a Gemini para encontrar páginas exactas o conceptos específicos.</div>
         </div>
-        <button class="scroll-down-btn" id="scrollToBottomBtn" title="Bajar al final">▼</button>
         <div class="v-input-row">
           <input id="modalQueryInput" type="text" placeholder="Preguntale a Gemini sobre este manual..." autocomplete="off">
           <button class="v-send" id="modalSendBtn">PREGUNTAR</button>
@@ -299,7 +309,7 @@
         }
       }
 
-      /* MODIFICACIÓN: Renderizado optimizado para que el PDF ocupe el 100% del contenedor sin franjas negras */
+      /* Renderizado limpio del PDF según el ancho disponible real */
       async function renderCurrentPage() {
         if (!activePdfDoc || isRenderingPage) return;
         isRenderingPage = true;
@@ -314,8 +324,8 @@
           
           const container = document.querySelector('.canvas-container');
           const unscaledVP = page.getViewport({ scale: 1.0 });
-          const targetWidth = container.clientWidth || 800;
-          const dynamicScale = Math.max(1.2, targetWidth / unscaledVP.width);
+          const availWidth = (container.clientWidth || 700) - 24;
+          const dynamicScale = Math.max(0.8, availWidth / unscaledVP.width);
 
           const vp = page.getViewport({ scale: dynamicScale });
           canvas.height = vp.height;
@@ -328,7 +338,6 @@
         }
       }
 
-      /* MODIFICACIÓN: Instrucciones mejoradas para lenguaje natural y sin sintaxis LaTeX */
       async function handleModalAIQuery() {
         const val = $('#modalQueryInput').value.trim();
         if(!val) return;
@@ -401,7 +410,6 @@ Consulta del estudiante: ${val}`;
           const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
           const rawText = text || "No pude encontrar una respuesta clara sobre eso.";
           
-          // Limpieza extra de etiquetas o caracteres tipo LaTeX si el modelo intenta usarlos
           let cleanText = rawText
             .replace(/\$\\text\{([^}]+)\}_?\{?([^}]*)\}?\$?/g, '$1$2')
             .replace(/\$+/g, '')
@@ -482,12 +490,6 @@ Consulta del estudiante: ${val}`;
           activePageNum++;
           renderCurrentPage();
         }
-      });
-
-      // Evento para el botón flotante de scroll abajo
-      $('#scrollToBottomBtn').addEventListener('click', () => {
-        const hist = $('#modalChatHistory');
-        hist.scrollTop = hist.scrollHeight;
       });
 
       window.addEventListener('resize', () => {
