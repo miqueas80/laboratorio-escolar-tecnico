@@ -3,7 +3,7 @@
  <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>NEXUS-X // QUANTUM CORE v5.3</title>
+  <title>NEXUS-X // QUANTUM CORE v5.4</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
     if (window.pdfjsLib) {
@@ -172,7 +172,7 @@
       <div class="viewer-sidebar-chat">
         <div style="font-size:11px; color:var(--success); font-weight:bold; border-bottom:1px solid var(--stroke); padding-bottom:6px;">🤖 ASISTENTE DE GEMINI (VISOR)</div>
         <div class="v-chat-history" id="modalChatHistory">
-          <div class="v-msg bot">Documento cargado. Preguntale a Gemini para analizar el contenido completo del manual.</div>
+          <div class="v-msg bot">Documento cargado. Consultame para analizar cualquier parte o hacer un resumen del documento entero.</div>
         </div>
         <div class="v-input-row">
           <input id="modalQueryInput" type="text" placeholder="Preguntale a Gemini sobre este manual..." autocomplete="off">
@@ -335,25 +335,42 @@
         }
       }
 
-      // ENDPOINT ESTABLE USANDO LA VERSIÓN V1 DE LA API Y GEMINI 1.5 FLASH
+      // FUNCIÓN ROBUSTA CON FALLBACK AUTOMÁTICO DE MODELOS
       async function callGeminiAPI(prompt, key) {
-        const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${key}`;
-        
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ 
-            contents: [{ parts: [{ text: prompt }] }] 
-          })
-        });
+        const models = [
+          "gemini-2.5-flash",
+          "gemini-1.5-flash",
+          "gemini-2.0-flash"
+        ];
 
-        const data = await res.json().catch(() => ({}));
+        let lastError = null;
 
-        if (!res.ok) {
-          throw new Error(data.error?.message || `HTTP ${res.status}`);
+        for (const model of models) {
+          try {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+            const res = await fetch(url, {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({ 
+                contents: [{ parts: [{ text: prompt }] }] 
+              })
+            });
+
+            const data = await res.json().catch(() => ({}));
+
+            if (res.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
+              return data.candidates[0].content.parts[0].text;
+            }
+
+            if (data.error?.message) {
+              lastError = data.error.message;
+            }
+          } catch (e) {
+            lastError = e.message;
+          }
         }
 
-        return data.candidates?.[0]?.content?.parts?.[0]?.text || "No obtuve respuesta del modelo.";
+        throw new Error(lastError || "Ningún modelo respondió correctamente.");
       }
 
       async function handleModalAIQuery() {
