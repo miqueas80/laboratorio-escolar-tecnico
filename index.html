@@ -91,10 +91,9 @@
     (() => {
       'use strict';
 
-      // Configura aquí tu usuario y nombre de repositorio en GitHub
       const GITHUB_CONFIG = {
         owner: "miqueas80",
-        repo: "laboratorio-escolar",
+        repo: "laboratorio-escolar-tecnico",
         branch: "main"
       };
 
@@ -127,7 +126,6 @@
           if (!res.ok) throw new Error("No se pudo conectar con la API de GitHub.");
           const data = await res.json();
           
-          // Filtramos solo los archivos PDF dentro del repositorio
           const pdfFiles = (data.tree || []).filter(item => item.type === "blob" && item.path.toLowerCase().endsWith('.pdf'));
 
           if (pdfFiles.length === 0) {
@@ -157,7 +155,7 @@
               <a href="${githubViewUrl}" target="_blank" rel="noopener" class="doc-pill">
                 <span>📄</span> ${fileName} 
                 <span style="font-size:10px; color:var(--accent);">[ABRIR]</span>
-              `;
+              </a>`;
           }
 
           $('#sysState').textContent = "Núcleo neural operativo al 100%";
@@ -165,7 +163,7 @@
 
         } catch (err) {
           $('#sysState').textContent = "Error de indexación";
-          appendMessage(`>> Error al escanear GitHub: ${err.message}. Comprueba tu conexión o los nombres de usuario/repositorio.`, "error");
+          appendMessage(`>> Error al escanear GitHub: ${err.message}. Comprueba tu conexión o que el repositorio sea público.`, "error");
         }
       }
 
@@ -203,7 +201,7 @@
           return ">> No se detectaron coincidencias directas en los PDFs indexados. Prueba usando palabras clave más específicas que aparezcan en los manuales.";
         }
 
-        const contentSample = bestMatch.content.substring(0, 400).replace(/\s+/g, ' ').trim();
+        const contentSample = doc.content ? bestMatch.content.substring(0, 400).replace(/\s+/g, ' ').trim() : "Contenido no disponible.";
         return `>> [COINCIDENCIA ENCONTRADA EN: ${bestMatch.name}]\n\n"${contentSample}..."\n\n[Acción: Haz clic arriba en el botón del archivo "${bestMatch.name}" para ver el documento completo].`;
       }
 
@@ -223,7 +221,6 @@
         if (e.key === 'Enter') $('#sendBtn').click();
       });
 
-      // Arrancamos el escaneo automático al cargar
       discoverAndIndexFiles();
     })();
   </script>
