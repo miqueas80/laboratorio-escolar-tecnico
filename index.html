@@ -110,8 +110,8 @@ header{
 @media(max-width:950px){.inventory-body,.qr-body{grid-template-columns:1fr}.viewer-body{display:flex;flex-direction:column}.viewer-sidebar-chat{height:43%;border-left:0;border-top:1px solid var(--stroke)}.canvas-container{height:57%}}
 @media(max-width:650px){body{font-size:14px}header{padding:10px 11px}.workspace{width:100vw;margin:0}.main-panel{border-radius:0;min-height:calc(100vh - 70px)}.api-config-bar input{width:125px}.status-pill{display:none}.inventory-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.stat-row{grid-template-columns:repeat(2,1fr)}.input-box-area{padding:9px}.btn-action{min-width:95px;padding:0 11px}.map-canvas{min-width:800px}.map-node{width:160px}.viewer-title-text{max-width:58vw}}
 </style>
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
- </head>
+ <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+</head>
  <body>
   <header>
    <div class="logo">NEXUS-X // QUANTUM CORE</div>
@@ -1669,7 +1669,8 @@ boot();
 
 })();
 </script>
-  <script>
+ 
+<script>
 /* =========================================================
    NEXUS-X EXPERIMENTAL V2
    Excel + PDF context + Gemini web-grounded research
@@ -1825,7 +1826,7 @@ ${docContext || "(sin coincidencias documentales)"}`;
     generationConfig:{temperature:0.2,maxOutputTokens:1800}
   };
 
-  const url=`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(key)}`;
+  const url=`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${encodeURIComponent(key)}`;
   const res=await fetch(url,{
     method:"POST",
     headers:{"Content-Type":"application/json"},
@@ -1899,185 +1900,109 @@ else boot();
 
 })();
 </script>
-  <script>
-/* =========================================================
-   NEXUS-X EXPERIMENTAL V3 — MAXIMUM LAB MODE
-   Excel ⇄ NEXUS IDs ⇄ PDF context ⇄ Gemini ⇄ Google Search
-   Local cache, citations, confidence, audit trail, exports.
-   ========================================================= */
+
+
+
+<script>
+/* ============================================================
+   NEXUS-X // MASTER CATALOG
+   The workbook is a repository asset. There is NO upload control.
+   Source: datos/catalogo_maestro.json
+   ============================================================ */
 (()=>{"use strict";
-const D=globalThis.document;
-const $=id=>D.getElementById(id);
+const CATALOG_URL="datos/catalogo_maestro.json";
 const norm=v=>String(v??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toUpperCase();
-const safe=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const STORE="NEXUS_X_EXPERIMENTAL_V3";
-const state=JSON.parse(localStorage.getItem(STORE)||'{"records":[],"history":[],"settings":{"model":"gemini-2.5-flash"}}');
+const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let db=null;
 
-function persist(){localStorage.setItem(STORE,JSON.stringify(state));}
-function key(){return localStorage.getItem("nexus_api_key")||localStorage.getItem("gemini_api_key")||$("apiKeyInput")?.value?.trim()||"";}
-
-function rowToRecord(row,sheet){
- const keys=Object.keys(row);
- const pick=(...names)=>{
-   const wanted=names.map(norm); const k=keys.find(x=>wanted.includes(norm(x)));
-   return k===undefined?"":String(row[k]??"").trim();
- };
- let raw=pick("ID NEXUS","NEXUS ID","ID","CODIGO","CÓDIGO","CODIGO NEXUS","CÓDIGO NEXUS");
- if(!raw)return null;
- const id=/^NEXUS:/i.test(raw)?raw.toUpperCase():"NEXUS:"+raw.toUpperCase();
- return {id,name:pick("NOMBRE","NAME","ELEMENTO","MATERIAL","REACTIVO"),
- formula:pick("FORMULA","FÓRMULA","FORMULA / CODIGO TECNICO","FÓRMULA / CÓDIGO TÉCNICO"),
- category:pick("CATEGORIA","CATEGORÍA","TIPO"),quantity:pick("CANTIDAD","QUANTITY"),
- location:pick("UBICACION","UBICACIÓN","LOCATION"),manufacturer:pick("FABRICANTE","MARCA","FABRICANTE / MARCA"),
- expiry:pick("VENCIMIENTO","EXPIRY"),keywords:pick("KEYWORDS","PALABRAS CLAVE"),
- notes:pick("NOTAS","OBSERVACIONES","NOTES"),sheet};
+async function loadMaster(){
+  const r=await fetch(CATALOG_URL,{cache:"no-store"});
+  if(!r.ok) throw Error("No se pudo cargar el catálogo maestro ("+r.status+").");
+  db=await r.json();
+  window.NEXUS_MASTER_DB=db;
+  return db;
 }
-
-async function importWorkbook(file){
- if(!globalThis.XLSX)throw Error("SheetJS no está disponible.");
- const wb=XLSX.read(await file.arrayBuffer(),{type:"array",cellDates:true});
- const records=[];
- for(const name of wb.SheetNames){
-   const ws=wb.Sheets[name];
-   XLSX.utils.sheet_to_json(ws,{defval:""}).forEach(r=>{
-     const x=rowToRecord(r,name); if(x)records.push(x);
-   });
- }
- const map=new Map(state.records.map(r=>[norm(r.id),r]));
- let added=0,updated=0;
- for(const r of records){
-   const old=map.get(norm(r.id));
-   if(old){Object.assign(old,r);updated++;}
-   else{state.records.push(r);map.set(norm(r.id),r);added++;}
- }
- state.lastImport={file:file.name,at:new Date().toISOString(),count:records.length};
- persist();
- syncLegacyInventory();
- return {records,added,updated};
+function allRows(){
+  if(!db?.sheets)return [];
+  const out=[];
+  for(const [sheet,obj] of Object.entries(db.sheets)){
+    for(const row of (obj.rows||[])) out.push({...row,_SHEET:sheet});
+  }
+  return out;
 }
-
-function syncLegacyInventory(){
- if(!Array.isArray(globalThis.inventory))globalThis.inventory=[];
- const map=new Map(globalThis.inventory.map(x=>[norm(x.id),x]));
- for(const r of state.records){
-   const old=map.get(norm(r.id));
-   if(old)Object.assign(old,r); else globalThis.inventory.push({...r});
- }
- try{globalThis.saveInventoryStore?.();globalThis.renderInventoryList?.();}catch(e){console.warn(e);}
+function lookup(raw){
+  const q=norm(raw);
+  const rows=allRows();
+  return rows.find(r=>norm(r._NEXUS_ID)===q || norm(r["QR NEXUS"])===q || norm(r["CODIGO NEXUS"])===q)
+      || rows.find(r=>norm(r._NEXUS_ID).replace(/^NEXUS[-:]/,"NX-")===q.replace(/^NEXUS[-:]/,"NX-"));
 }
-
-function contextFor(question){
- const q=norm(question), terms=q.split(/[^A-Z0-9ÁÉÍÓÚÜÑ.-]+/).filter(x=>x.length>2);
- const records=state.records.filter(r=>{
-   const s=norm(Object.values(r).join(" "));
-   return terms.some(t=>s.includes(t));
- }).slice(0,12);
-
- let pdfs=[];
- const files=Array.isArray(globalThis.repositoryFiles)?globalThis.repositoryFiles:[];
- const texts=globalThis.repositoryTexts||{};
- for(const f of files){
-   const d=texts[f.path]; if(!d||d.error)continue;
-   const text=Array.isArray(d.original)?d.original.join("\n"):String(d.text||"");
-   const score=terms.reduce((n,t)=>n+(norm(text).includes(t)?1:0),0);
-   if(score)pdfs.push({name:f.name||f.path,path:f.path,score,text:text.slice(0,24000)});
- }
- pdfs.sort((a,b)=>b.score-a.score);
- return {records,pdfs:pdfs.slice(0,6)};
+function ficha(r){
+  if(!r)return `<div class="nx-notfound">Código no encontrado en el catálogo maestro.</div>`;
+  const hidden=new Set(["_NEXUS_ID","_SHEET"]);
+  const entries=Object.entries(r).filter(([k,v])=>!hidden.has(k)&&v!==null&&String(v).trim()!=="");
+  return `<article class="nx-master-card">
+    <header><div><small>NEXUS-X // FICHA MAESTRA</small><h3>${esc(r["Sustancia / Mezcla / Material"]||r["Sustancia/Mezcla/Material"]||"Registro")}</h3></div>
+    <strong>${esc(r._NEXUS_ID)}</strong></header>
+    <div class="nx-master-grid">${entries.map(([k,v])=>`<div><label>${esc(k)}</label><span>${esc(v)}</span></div>`).join("")}</div>
+    <footer><button type="button" id="nxAskFicha">🤖 CONSULTAR A LA IA SOBRE ESTA FICHA</button></footer>
+  </article>`;
 }
-
-async function research(question){
- const api=key(); if(!api)throw Error("Configurá primero la API Key de Gemini.");
- const ctx=contextFor(question);
- const local=[
-  "REGISTROS EXCEL:\n"+ctx.records.map(r=>JSON.stringify(r)).join("\n"),
-  "DOCUMENTOS PDF:\n"+ctx.pdfs.map(p=>`[${p.name}]\n${p.text}`).join("\n\n---\n\n")
- ].join("\n\n");
-
- const prompt=`Eres NEXUS-X, asistente técnico para una exposición escolar de laboratorio.
-Pregunta del usuario: ${question}
-
-Usa el contexto local como fuente prioritaria cuando corresponda.
-Si la pregunta pide información actual, un protocolo no presente en los documentos, una norma, una ficha técnica o información externa, usa Google Search.
-NO inventes fuentes.
-Distingue explícitamente:
-[LOCAL] información del Excel/PDF.
-[WEB] información obtenida de Internet.
-[INFERENCIA] deducciones.
-Cuando haya un procedimiento experimental, no presentes como seguro un dato que no esté respaldado; indica reactivos, equipos, condiciones, pasos, controles y precauciones cuando las fuentes los permitan.
-Termina con una sección "FUENTES" cuando hayas usado información web.
-
-${local}`;
-
- const body={contents:[{role:"user",parts:[{text:prompt}]}],
-   tools:[{google_search:{}}],
-   generationConfig:{temperature:.15,maxOutputTokens:3000}};
- const url=`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(state.settings.model)}:generateContent?key=${encodeURIComponent(api)}`;
- const res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
- const data=await res.json().catch(()=>({}));
- if(!res.ok)throw Error(data?.error?.message||`Gemini HTTP ${res.status}`);
- const text=(data?.candidates?.[0]?.content?.parts||[]).map(p=>p.text||"").join("\n").trim();
- const gm=data?.candidates?.[0]?.groundingMetadata||{};
- const sources=(gm.groundingChunks||[]).map(c=>c.web).filter(Boolean);
- const queries=(gm.webSearchQueries||[]).slice();
- const item={id:crypto.randomUUID?.()||String(Date.now()),at:new Date().toISOString(),question,text,
-   sources:sources.map(s=>({title:s.title||s.domain||s.uri,url:s.uri})),queries,
-   context:{records:ctx.records.map(r=>r.id),pdfs:ctx.pdfs.map(p=>p.name)}};
- state.history.unshift(item);state.history=state.history.slice(0,100);persist();
- return item;
-}
-
-function showResult(r){
- const wrap=$("nexusV3Results")||D.body;
- const box=D.createElement("section");box.className="nexus-v3-result";
- const links=r.sources.length?r.sources.map(s=>`<li><a href="${safe(s.url)}" target="_blank" rel="noopener">${safe(s.title||s.url)}</a></li>`).join(""):"";
- box.innerHTML=`<div class="n3-head"><b>NEXUS-X // RESEARCH CORE</b><span>${new Date(r.at).toLocaleString()}</span></div>
- <div class="n3-answer">${safe(r.text).replace(/\n/g,"<br>")}</div>
- ${links?`<details open><summary>Fuentes web (${r.sources.length})</summary><ul>${links}</ul></details>`:""}
- ${r.queries.length?`<details><summary>Consultas ejecutadas</summary><code>${r.queries.map(safe).join("<br>")}</code></details>`:""}`;
- wrap.prepend(box);
-}
-
 function install(){
- if(!$("nexusV3Panel")){
-   const panel=D.createElement("div");panel.id="nexusV3Panel";
-   panel.innerHTML=`<div class="n3-title">NEXUS-X // MAXIMUM LAB MODE</div>
-   <div class="n3-row"><button id="n3Excel">▣ CARGAR EXCEL</button><button id="n3Research">◉ INVESTIGAR</button><button id="n3Export">⇩ EXPORTAR DATOS</button>
-   <input id="n3File" type="file" accept=".xlsx,.xls,.csv" hidden>
-   <input id="n3Question" placeholder="Ej.: ¿Cuál es el protocolo de esta fórmula y qué fuentes lo respaldan?"></div>
-   <div id="nexusV3Results"></div>`;
-   D.body.appendChild(panel);
-   $("n3Excel").onclick=()=>$("n3File").click();
-   $("n3File").onchange=async e=>{const f=e.target.files?.[0];if(!f)return;
-     try{const r=await importWorkbook(f);alert(`Importación completa: ${r.records.length} registros · ${r.added} nuevos · ${r.updated} actualizados.`);}
-     catch(x){alert("Error Excel: "+x.message);console.error(x)} e.target.value="";
-   };
-   $("n3Research").onclick=async()=>{
-     const q=$("n3Question").value.trim();if(!q)return alert("Escribí una pregunta.");
-     $("n3Research").disabled=true;$("n3Research").textContent="◌ INVESTIGANDO...";
-     try{showResult(await research(q));}catch(x){alert("Investigación: "+x.message);console.error(x)}
-     finally{$("n3Research").disabled=false;$("n3Research").textContent="◉ INVESTIGAR";}
-   };
-   $("n3Export").onclick=()=>{
-     const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
-     const a=D.createElement("a");a.href=URL.createObjectURL(blob);a.download="nexus-x-experimental-data.json";a.click();
-     setTimeout(()=>URL.revokeObjectURL(a.href),1000);
-   };
- }
- syncLegacyInventory();
-}
-const css=D.createElement("style");css.textContent=`
-#nexusV3Panel{margin:16px;padding:16px;border:1px solid rgba(103,232,249,.25);border-radius:14px;background:rgba(4,10,18,.72);font-family:system-ui;color:#dff}
-#nexusV3Panel .n3-title{font-weight:800;letter-spacing:.08em;margin-bottom:10px}
-#nexusV3Panel .n3-row{display:flex;gap:8px;flex-wrap:wrap}
-#nexusV3Panel button,#nexusV3Panel input{padding:10px;border-radius:9px;border:1px solid rgba(103,232,249,.25);background:#08111c;color:#dff}
-#n3Question{flex:1;min-width:260px}.nexus-v3-result{margin-top:12px;padding:14px;border:1px solid rgba(103,232,249,.2);border-radius:12px;background:rgba(7,15,25,.85)}
-.n3-head{display:flex;justify-content:space-between;gap:10px;margin-bottom:10px}.n3-answer{line-height:1.55}.nexus-v3-result a{color:#67e8f9}
-`;D.head.appendChild(css);
+  if(document.getElementById("nxMasterLookup"))return;
+  const el=document.createElement("section");
+  el.id="nxMasterLookup";
+  el.innerHTML=`<div class="nx-master-title">NEXUS-X // IDENTIFICACIÓN</div>
+    <div class="nx-master-row">
+      <input id="nxMasterCode" autocomplete="off" placeholder="Ingresá o escaneá un código NEXUS-X">
+      <button id="nxMasterSearch">VER FICHA</button>
+    </div>
+    <div id="nxMasterStatus">Cargando catálogo maestro…</div>
+    <div id="nxMasterFicha"></div>`;
+  const target=document.querySelector('input[placeholder*="concepto" i]')?.closest("section,div")||document.querySelector("main")||document.body;
+  target.parentNode.insertBefore(el,target);
 
-globalThis.NEXUS_X_MAXIMUM={state,importWorkbook,contextFor,research,showResult};
-if(D.readyState==="loading")D.addEventListener("DOMContentLoaded",install,{once:true});else install();
+  const input=document.getElementById("nxMasterCode"), btn=document.getElementById("nxMasterSearch");
+  const status=document.getElementById("nxMasterStatus"), box=document.getElementById("nxMasterFicha");
+  async function search(){
+    const q=input.value.trim();
+    if(!q){box.innerHTML="";return;}
+    const r=lookup(q); box.innerHTML=ficha(r);
+    if(r) input.value=r._NEXUS_ID;
+    const ask=document.getElementById("nxAskFicha");
+    if(ask) ask.onclick=()=>{
+      const name=r["Sustancia / Mezcla / Material"]||r["Sustancia/Mezcla/Material"]||"material";
+      const formula=r["Fórmula"]||r["Formula"]||"";
+      const prompt=`Analiza la ficha NEXUS-X ${r._NEXUS_ID}. Material: ${name}. Fórmula: ${formula}. ¿Qué documentación, protocolo y precauciones corresponden a este registro? Usa primero los documentos del laboratorio y, si falta información, investigación web con fuentes.`;
+      const original=document.querySelector('input[placeholder*="concepto" i]')||document.querySelector('textarea');
+      if(original){original.value=prompt;original.dispatchEvent(new Event("input",{bubbles:true}));original.focus();}
+    };
+  }
+  btn.onclick=search;
+  input.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();search();}});
+  loadMaster().then(()=>{
+    status.textContent=`Catálogo maestro conectado · ${allRows().length} registros`;
+  }).catch(e=>{status.textContent="Error de catálogo: "+e.message;console.error(e);});
+}
+const style=document.createElement("style");
+style.textContent=`
+#nxMasterLookup{margin:14px 0;padding:15px;border:1px solid rgba(103,232,249,.25);border-radius:14px;background:rgba(4,10,18,.72);color:#e6fbff}
+.nx-master-title{font-weight:800;letter-spacing:.08em;margin-bottom:9px}
+.nx-master-row{display:flex;gap:8px;flex-wrap:wrap}
+#nxMasterCode{flex:1;min-width:260px;padding:11px;border-radius:9px;border:1px solid rgba(103,232,249,.25);background:#07111b;color:#e6fbff}
+#nxMasterSearch,#nxMasterLookup button{padding:11px 14px;border-radius:9px;border:1px solid rgba(103,232,249,.3);background:#0b1d29;color:#dff;cursor:pointer}
+#nxMasterStatus{font-size:.8em;opacity:.65;margin-top:8px}
+.nx-master-card{margin-top:12px;padding:15px;border:1px solid rgba(103,232,249,.22);border-radius:12px;background:rgba(7,15,25,.82)}
+.nx-master-card header{display:flex;justify-content:space-between;gap:12px}.nx-master-card header small{opacity:.7}.nx-master-card h3{margin:4px 0}
+.nx-master-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px;margin-top:12px}
+.nx-master-grid div{padding:9px;border-radius:8px;background:rgba(255,255,255,.035)}
+.nx-master-grid label{display:block;opacity:.6;font-size:.78em;margin-bottom:4px}.nx-master-grid span{white-space:pre-wrap}
+.nx-master-card footer{margin-top:12px}.nx-notfound{margin-top:10px;padding:12px;border-radius:9px;background:rgba(255,80,80,.08)}
+`;
+document.head.appendChild(style);
+window.NEXUS_MASTER={load:loadMaster,lookup,all:allRows};
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});else install();
 })();
 </script>
- </body>
+
+</body>
 </html>
