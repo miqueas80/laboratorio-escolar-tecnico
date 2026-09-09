@@ -90,6 +90,7 @@ footer{margin:15px 0;text-align:center;color:#557783;font-size:11px}
       <div class="eyebrow">ASISTENTE TÉCNICO</div>
       <h2>IA + búsqueda web</h2>
       <div class="muted small">La IA recibe la ficha NEXUS-X y, cuando corresponde, puede consultar información web en tiempo real.</div>
+      <div class="small muted" style="margin-top:6px">Fallback automático: Gemini 3.8 → 3.7 → 3.6 ante cuota/límite o error temporal.</div>
       <div id="aiLog" class="ai-log" style="margin-top:12px">
        <div class="empty">Seleccioná una ficha o escribí una pregunta.</div>
       </div>
@@ -145,7 +146,7 @@ const CONFIG = Object.freeze({
   github: { owner:"miqueas80", repo:"laboratorio-escolar-tecnico", branch:"main" },
   catalogUrl:"catalogo_maestro.json",
   excelUrl:"Sustancias_Lab. de CN_.xlsx",
-  geminiModel:"gemini-3.8-flash",
+  geminiModels:["gemini-3.8-flash","gemini-3.7-flash","gemini-3.6-flash"],
   geminiEndpoint:"https://generativelanguage.googleapis.com/v1beta/interactions",
   pdfApi:"https://api.github.com/repos/miqueas80/laboratorio-escolar-tecnico/contents/"
 });
@@ -444,39 +445,109 @@ function extractAIResult(json){
 async function askAI(){
   const prompt=$("aiInput").value.trim();
   if(!prompt) return;
+
   const key=getApiKey();
   if(!key){
     addMessage("Falta la Gemini API Key. Abrí ⚙ IA y guardala para esta sesión/navegador.","err");
     $("settingsPanel").classList.remove("hidden");
     return;
   }
+
   const context=[];
   if(CURRENT) context.push(`FICHA NEXUS-X:\n${JSON.stringify(CURRENT,null,2)}`);
   if(CURRENT_DOC) context.push(`DOCUMENTO SELECCIONADO: ${CURRENT_DOC.name}`);
   if(PDF_TEXT) context.push(`TEXTO EXTRAÍDO DEL PDF:\n${PDF_TEXT.slice(0,120000)}`);
-  const full=`Sos NEXUS-X, asistente técnico de laboratorio escolar. Respondé en español, diferenciá claramente lo que proviene de la ficha/documentación local de lo que proviene de investigación web. No inventes datos. Si el usuario pide un protocolo experimental, indicá materiales, pasos, condiciones, riesgos, EPP, residuos y controles solo cuando estén sustentados o verificables; si falta información crítica, decilo y pedí/verificá la fuente.\n\n${context.join("\n\n")}\n\nPREGUNTA DEL USUARIO:\n${prompt}`;
 
-  addMessage(prompt,"user"); $("askBtn").disabled=true; $("askBtn").textContent="INVESTIGANDO…";
+  const full=`Sos NEXUS-X, asistente técnico de laboratorio escolar. Respondé en español, diferenciá claramente lo que proviene de la ficha/documentación local de lo que proviene de investigación web. No inventes datos. Si el usuario pide un protocolo experimental, indicá materiales, pasos, condiciones, riesgos, EPP, residuos y controles solo cuando estén sustentados o verificables; si falta información crítica, decilo y pedí/verificá la fuente.
+
+${context.join("\n\n")}
+
+PREGUNTA DEL USUARIO:
+${prompt}`;
+
+  addMessage(prompt,"user");
+  $("askBtn").disabled=true;
+  $("askBtn").textContent="INVESTIGANDO…";
+
+  const models=Array.isArray(CONFIG.geminiModels) && CONFIG.geminiModels.length
+    ? CONFIG.geminiModels
+    : ["gemini-3.8-flash","gemini-3.7-flash","gemini-3.6-flash"];
+
+  let lastError=null;
+  let usedModel=null;
+
   try{
-    const r=await fetch(CONFIG.geminiEndpoint,{
-      method:"POST",
-      headers:{"Content-Type":"application/json","x-goog-api-key":key},
-      body:JSON.stringify({
-        model:CONFIG.geminiModel,
-        input:full,
-        tools:[{type:"google_search"}],
-        generation_config:{thinking_level:"medium"}
-      })
-    });
-    const raw=await r.text();
-    let json; try{json=JSON.parse(raw)}catch{throw new Error(raw)}
-    if(!r.ok) throw new Error(json.error?.message || `HTTP ${r.status}`);
-    const result=extractAIResult(json);
-    addMessage(result.text,"ai",result.sources);
+    for(let i=0;i<models.length;i++){
+      const model=models[i];
+      $("askBtn").textContent=`IA ${model.replace("gemini-","")}…`;
+
+      try{
+        const r=await fetch(CONFIG.geminiEndpoint,{
+          method:"POST",
+          headers:{
+            "Content-Type":"application/json",
+            "x-goog-api-key":key
+          },
+          body:JSON.stringify({
+            model,
+            input:full,
+            tools:[{type:"google_search"}],
+            generation_config:{thinking_level:"medium"}
+          })
+        });
+
+        const raw=await r.text();
+        let json;
+        try{json=JSON.parse(raw)}catch{
+          json={error:{message:raw || `HTTP ${r.status}`}};
+        }
+
+        if(r.ok){
+          usedModel=model;
+          const result=extractAIResult(json);
+          addMessage(result.text,"ai",result.sources);
+          return;
+        }
+
+        const status=r.status;
+        const message=json.error?.message || `HTTP ${status}`;
+        lastError=new Error(`${model}: ${message}`);
+
+        // Automatic fallback only for quota/rate-limit/resource/transient server failures.
+        // Do not hide invalid API keys, malformed requests, or permission errors.
+        const shouldFallback=
+          status===429 ||
+          status===408 ||
+          status===500 ||
+          status===502 ||
+          status===503 ||
+          status===504;
+
+        if(!shouldFallback) throw lastError;
+
+        if(i<models.length-1){
+          addMessage(`⚠ ${model} no disponible temporalmente/cuota alcanzada. Cambiando automáticamente a ${models[i+1]}…`,"ai");
+          continue;
+        }
+      }catch(err){
+        lastError=err;
+        const msg=String(err?.message || err);
+        const transient=/429|408|500|502|503|504|quota|rate.?limit|resource.?exhausted|temporar/i.test(msg);
+
+        if(transient && i<models.length-1){
+          addMessage(`⚠ ${model} no disponible temporalmente. Cambiando automáticamente a ${models[i+1]}…`,"ai");
+          continue;
+        }
+        throw err;
+      }
+    }
+
+    throw lastError || new Error("No hay modelos Gemini disponibles.");
   }catch(e){
     addMessage(`Error de Gemini: ${e.message}`,"err");
   }finally{
-    $("askBtn").disabled=false; $("askBtn").textContent="🤖 PREGUNTAR";
+    $("askBtn").disabled=false;
+    $("askBtn").textContent="🤖 PREGUNTAR";
   }
 }
 
