@@ -272,7 +272,7 @@ header{
 "use strict";
 
 /* =========================================================
-   CONFIGURACIÓN
+   CONFIGURACIÓN[span_0](start_span)[span_0](end_span)
    ========================================================= */
 const GITHUB_CONFIG = {
   owner: "miqueas80",
@@ -280,15 +280,6 @@ const GITHUB_CONFIG = {
   branch: "main"
 };
 
-/*
- * Gemini:
- * - Primario: Interactions API + gemini-3.8-flash.
- * - Fallback: generateContent con modelos estables.
- *
- * IMPORTANTE: para una app pública de producción no conviene
- * exponer una API key en el navegador. Para una expo técnica
- * funciona, pero no subas una clave real al código.
- */
 const GEMINI_INTERACTIONS_URL =
   "https://generativelanguage.googleapis.com/v1beta/interactions";
 const GEMINI_MODELS = [
@@ -305,9 +296,7 @@ let repositoryTexts = {};
 let inventory = loadInventory();
 
 /* =========================================================
-   CATÁLOGO MAESTRO NEXUS-X — FUENTE EN LA RAÍZ
-   Primario: catalogo_maestro.json
-   Respaldo: Sustancias_Lab. de CN_.xlsx
+   CATÁLOGO MAESTRO NEXUS-X — FUENTE EN LA RAÍZ[span_1](start_span)[span_1](end_span)
    ========================================================= */
 const NEXUS_CATALOG_URL = "catalogo_maestro.json";
 const NEXUS_EXCEL_URL = "Sustancias_Lab. de CN_.xlsx";
@@ -325,35 +314,56 @@ function catalogMaterial(row){
          row["Name"] ?? "Registro NEXUS-X";
 }
 
-function catalogId(row,index,sheet="CATALOGO"){
-  const keys=Object.keys(row||{});
-  const preferred=keys.find(k=>/NEXUS|NX[-_ ]?ID|QR|C[ÓO]DIGO|CODE|ID/i.test(k));
-  if(preferred && String(row[preferred]||"").trim()) return normalizeQrPayload(row[preferred]);
-  const name=catalogMaterial(row);
-  const slug=normalizeStr(name).replace(/[^a-z0-9]+/gi,"-").replace(/^-|-$/g,"").slice(0,30).toUpperCase()||"REG";
-  return `NX-${slug}-${String(index+1).padStart(4,"0")}`;
+function catalogId(row) {
+  const keys = Object.keys(row || {});
+
+  const preferred = [
+    "_NEXUS_ID",
+    "NEXUS_ID",
+    "NEXUS ID",
+    "NX-ID",
+    "QR",
+    "Código",
+    "Codigo",
+    "ID"
+  ];
+
+  for (const wanted of preferred) {
+    const key = keys.find(
+      k => String(k).trim().toLowerCase() === wanted.toLowerCase()
+    );
+
+    if (key && row[key] != null) {
+      const id = normalizeQrPayload(row[key]);
+      if (id) return id;
+    }
+  }
+
+  // Fallback: buscar cualquier columna cuyo nombre parezca un ID NEXUS
+  const key = keys.find(k =>
+    /NEXUS|NX[-_ ]?ID|QR|C[ÓO]DIGO|CODE/i.test(String(k))
+  );
+
+  if (key && row[key] != null) {
+    return normalizeQrPayload(row[key]);
+  }
+
+  return "";
 }
 
 function normalizeCatalogRows(rows,sheet="CATALOGO"){
   return (Array.isArray(rows)?rows:[]).map((row,i)=>{
     const r={...row};
-    r._NEXUS_ID=normalizeQrPayload(r._NEXUS_ID || catalogId(r,i,sheet));
+    let id = catalogId(r);
+    if (!id) {
+      const name = catalogMaterial(r);
+      const slug = normalizeStr(name).replace(/[^a-z0-9]+/gi,"-").replace(/^-|-$/g,"").slice(0,30).toUpperCase()||"REG";
+      id = `NX-${slug}-${String(i+1).padStart(4,"0")}`;
+    }
+    r._NEXUS_ID=normalizeQrPayload(r._NEXUS_ID || id);
     r._SHEET=sheet;
     return r;
   });
-}
-
-function recordsFromCatalogJson(data){
-  if(Array.isArray(data)) return normalizeCatalogRows(data);
-  if(Array.isArray(data.records)) return normalizeCatalogRows(data.records);
-  const out=[];
-  if(data && data.sheets && typeof data.sheets === "object") {
-    for(const [sheet,value] of Object.entries(data.sheets)){
-      const rows=Array.isArray(value) ? value : value?.rows;
-      out.push(...normalizeCatalogRows(rows,sheet));
-    }
-  }
-  return out;
 }
 
 async function loadNexusCatalog(){
@@ -452,7 +462,7 @@ let lastQrAt = 0;
 const $ = s => document.querySelector(s);
 
 /* =========================================================
-   UTILIDADES
+   UTILIDADES[span_2](start_span)[span_2](end_span)
    ========================================================= */
 function escapeHtml(str) {
   return String(str ?? "")
@@ -492,7 +502,7 @@ function normalizeStr(str) {
 const STOPWORDS = new Set(`
 para desde entre sobre como este esta estos estas una uno unas unos
 con sin por del las los que son fue han hay donde cuando cual
-cualquiera puede pueden debe deben ser sea sean tener tiene hacer
+cualquiera puede deben ser sea sean tener tiene hacer
 hace hacia mediante durante parte partes pagina páginas manual
 material materiales protocolo protocolos procedimiento procedimientos
 unidad tema contenido documento documentos alumno estudiante ejemplo
@@ -572,7 +582,7 @@ function compareDocuments(a,b) {
 }
 
 /* =========================================================
-   INVENTARIO
+   INVENTARIO[span_3](start_span)[span_3](end_span)
    ========================================================= */
 function loadInventory() {
   try {
@@ -752,26 +762,23 @@ function updateInventoryMatches(item) {
 }
 
 /* =========================================================
-   QR: CÁMARA + IMAGEN + MANUAL
+   QR: CÁMARA + IMAGEN + MANUAL[span_4](start_span)[span_4](end_span)
    ========================================================= */
 function normalizeQrPayload(raw) {
   let text = String(raw ?? "").trim();
   if (!text) return "";
 
-  // QR puede contener directamente el código o una URL con ?id= / ?nexus=.
   try {
     const url = new URL(text);
     const id = url.searchParams.get("id") || url.searchParams.get("nexus");
     if (id) text = id;
   } catch {}
 
-  // Acepta esquemas antiguos y nuevos sin conservar el prefijo NEXUS:.
   text = text
     .replace(/^nexus:\/\//i, "")
     .replace(/^nexus:/i, "")
     .trim();
 
-  // Extrae un NX-... válido aunque el QR traiga texto alrededor.
   const match = text.match(/NX-[A-Z0-9]+-[0-9]{1,6}/i);
   if (match) text = match[0];
 
@@ -792,7 +799,6 @@ async function processQr(raw) {
   const item = catalogItem ? catalogItemToInventory(catalogItem) :
     inventory.find(x => normalizeQrPayload(x.id).toLowerCase() === id.toLowerCase());
 
-  // Aunque no exista en inventario, buscamos el ID directamente en PDFs.
   const docIdMatches = repositoryFiles
     .map(f => repositoryTexts[f.path])
     .filter(Boolean)
@@ -904,7 +910,6 @@ async function startCamera() {
         audio:false
       });
     } catch(firstErr) {
-      // Fallback para webcams/Edge cuando facingMode no es aceptado.
       stream = await navigator.mediaDevices.getUserMedia({
         video:true,audio:false
       });
@@ -1023,7 +1028,6 @@ async function decodeQrImageFile(file) {
     let image = ctx.getImageData(0,0,canvas.width,canvas.height);
     let code = window.jsQR(image.data,image.width,image.height,{inversionAttempts:"attemptBoth"});
 
-    // Segundo intento con contraste/grises para fotos con reflejos.
     if (!code) {
       const data = image.data;
       for(let i=0;i<data.length;i+=4){
@@ -1060,7 +1064,7 @@ async function closeQrOverlay() {
 }
 
 /* =========================================================
-   GITHUB / PDF
+   GITHUB / PDF[span_5](start_span)[span_5](end_span)
    ========================================================= */
 async function githubContents(path="") {
   const encodedPath = path.split("/").filter(Boolean).map(encodeURIComponent).join("/");
@@ -1163,7 +1167,7 @@ async function indexAllPdfs() {
 }
 
 /* =========================================================
-   BÚSQUEDA + MAPA DOCUMENTAL
+   BÚSQUEDA + MAPA DOCUMENTAL[span_6](start_span)[span_6](end_span)
    ========================================================= */
 function findBestPages(profile,query) {
   const words=[...tokenize(query)];
@@ -1463,7 +1467,7 @@ function handleMainGlobalQuery() {
 }
 
 /* =========================================================
-   PDF
+   PDF[span_7](start_span)[span_7](end_span)
    ========================================================= */
 async function loadPdfInModal(filePath,targetPage=1){
   const doc=repositoryTexts[filePath];
@@ -1508,7 +1512,7 @@ async function renderCurrentPage(){
 }
 
 /* =========================================================
-   GEMINI — INTERACTIONS API + FALLBACK
+   GEMINI — INTERACTIONS API + FALLBACK[span_8](start_span)[span_8](end_span)
    ========================================================= */
 function extractInteractionText(data) {
   if (typeof data?.output_text === "string" && data.output_text.trim()) {
@@ -1688,7 +1692,7 @@ REGLAS:
 }
 
 /* =========================================================
-   EVENTOS
+   EVENTOS[span_9](start_span)[span_9](end_span)
    ========================================================= */
 $("#apiKeyInput").value=globalApiKey;
 
@@ -1767,14 +1771,13 @@ window.addEventListener("resize",()=>{
 window.addEventListener("beforeunload",()=>stopCamera());
 
 /* =========================================================
-   ARRANQUE — SIN BLOQUEAR LA UI
+   ARRANQUE — SIN BLOQUEAR LA UI[span_10](start_span)[span_10](end_span)
    ========================================================= */
 async function boot(){
   try{
     $("#sysState").textContent="Inicializando NEXUS-X...";
     addMsg("#mainChatBox",">> Conectando con GitHub y preparando catálogo maestro...","system");
 
-    // Primero se inicializa el catálogo; la búsqueda QR no depende del indexado PDF.
     await new Promise(requestAnimationFrame);
     const catalogOk=await loadNexusCatalog();
     if(!catalogOk){
@@ -1814,3 +1817,4 @@ boot();
 </script>
  </body>
 </html>
+
