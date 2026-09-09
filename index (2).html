@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEXUS-X // Catálogo QR</title>
+<style>
+:root{--bg:#010308;--panel:#07101e;--line:#164e63;--accent:#00f2fe;--text:#f4f8ff;--muted:#94a3b8;--ok:#10b981;--danger:#f43f5e}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#0b2340,#010308 65%);color:var(--text);font:15px ui-monospace,SFMono-Regular,Menlo,monospace}
+main{width:min(1000px,94vw);margin:24px auto}.card{background:rgba(7,16,30,.95);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:14px;box-shadow:0 10px 35px #0008}
+h1{color:var(--accent);letter-spacing:2px;font-size:20px}.muted{color:var(--muted)}input,button{font:inherit}input{width:100%;padding:14px;border-radius:8px;border:1px solid var(--line);background:#02050a;color:var(--text);outline:0}button{padding:12px 16px;border:0;border-radius:8px;background:var(--accent);font-weight:900;cursor:pointer;margin-top:10px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.field{padding:12px;background:#020812;border:1px solid #123047;border-radius:8px}.label{font-size:11px;color:var(--muted);margin-bottom:5px}.value{word-break:break-word}.ok{color:#6ee7b7}.err{color:#fda4af}@media(max-width:650px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+<div class="card">
+<h1>◈ NEXUS-X // IDENTIFICADOR DE LABORATORIO</h1>
+<div class="muted">El QR debe contener únicamente un código como <b>NX-SUST-0042</b>.</div>
+<input id="code" placeholder="Escaneá o escribí NX-SUST-0001" autocomplete="off">
+<button id="find">CONSULTAR FICHA</button>
+<div id="status" class="muted" style="margin-top:10px">Cargando catálogo...</div>
+</div>
+<div class="card" id="result" hidden></div>
+</main>
+<script src="nexus-data.js"></script>
+<script>
+(async()=>{
+ const $=s=>document.querySelector(s), status=$("#status"), result=$("#result");
+ try{
+   await NEXUSCatalog.load();
+   status.textContent=`Catálogo cargado: ${NEXUSCatalog.all().length} registros.`;
+   status.className="ok";
+ }catch(e){status.textContent=e.message;status.className="err";return}
+ function render(){
+   const raw=$("#code").value, rec=NEXUSCatalog.find(raw);
+   if(!rec){result.hidden=false;result.innerHTML='<div class="err">No existe un registro para ese código.</div>';return}
+   const fields=[
+    ["Código NEXUS",rec.codigo_nexus],["Sustancia / material",rec.sustancia_material],
+    ["Fórmula",rec.formula],["Estado físico",rec.estado_fisico],
+    ["Presentación",rec.presentacion],["Envase original",rec.envase_original],
+    ["Fecha / vencimiento",rec.fecha_envasado_vencimiento],
+    ["Ubicación",rec.ubicacion_armario],["Observaciones",rec.observaciones]
+   ];
+   result.hidden=false;
+   result.innerHTML='<h2 style="color:var(--accent)">📋 FICHA NEXUS-X</h2><div class="grid">'+
+     fields.map(([k,v])=>`<div class="field"><div class="label">${k}</div><div class="value">${String(v||"—").replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]))}</div></div>`).join("")+
+     '</div>';
+ }
+ $("#find").onclick=render;
+ $("#code").onkeydown=e=>{if(e.key==="Enter")render()};
+})();
+</script>
+</body>
+</html>
