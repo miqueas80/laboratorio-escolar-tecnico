@@ -1,12 +1,12 @@
 <!doctype html>
 <html lang="es">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#06131d">
-<meta name="description" content="NEXUS-X // Laboratorio Escolar Técnico">
-<title>NEXUS-X // LABORATORIO ESCOLAR TÉCNICO</title>
-<style>
+ <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#06131d">
+  <meta name="description" content="NEXUS-X // Laboratorio Escolar Técnico">
+  <title>NEXUS-X // LABORATORIO ESCOLAR TÉCNICO</title>
+  <style>
 :root{
   --bg:#03080d;--panel:#07131d;--panel2:#0a1b27;--line:#16465b;
   --cyan:#54e7ff;--cyan2:#19bfe3;--text:#e7fbff;--muted:#82a9b7;
@@ -40,98 +40,102 @@ video{width:100%;border-radius:12px;background:#000;max-height:360px}.camera{dis
 footer{margin:15px 0;text-align:center;color:#557783;font-size:11px}
 @media(max-width:900px){main{grid-template-columns:1fr}.topbar{position:relative}.viewer{height:420px}}
 </style>
-</head>
-<body>
-<div class="app">
-<header class="topbar">
-  <div class="brand"><span class="dot"></span><span>NEXUS-X // QUANTUM CORE</span></div>
-  <div class="status"><i></i><span id="systemStatus">Inicializando catálogo…</span></div>
-</header>
-
-<main>
-<section>
-  <div class="panel">
-    <div class="eyebrow">IDENTIFICACIÓN MAESTRA</div>
-    <h1>Código NEXUS-X → ficha</h1>
-    <div class="muted small">El catálogo se carga automáticamente desde la raíz del repositorio. No se carga ningún Excel desde la interfaz.</div>
-    <div class="search">
-      <input id="codeInput" autocomplete="off" placeholder="Ingresá o escaneá un código NEXUS-X">
-      <button class="btn primary" id="searchBtn">VER FICHA</button>
-      <button class="btn" id="cameraBtn">📷 ESCANEAR</button>
+ </head>
+ <body>
+  <div class="app">
+   <header class="topbar">
+    <div class="brand">
+     <span class="dot"></span><span>NEXUS-X // QUANTUM CORE</span>
     </div>
-    <div id="lookupStatus" class="small muted" style="margin-top:8px"></div>
-    <div id="ficha"></div>
-  </div>
-
-  <div class="panel" style="margin-top:14px">
-    <div class="eyebrow">DOCUMENTACIÓN</div>
-    <h2>Manuales y protocolos</h2>
-    <div class="row" style="margin-bottom:8px">
-      <button class="btn" id="refreshDocs">↻ ACTUALIZAR DOCUMENTOS</button>
-      <span class="small muted" id="docsStatus"></span>
+    <div class="status">
+     <i></i><span id="systemStatus">Inicializando catálogo…</span>
     </div>
-    <div id="docList" class="doc-list"></div>
-    <div id="viewerWrap" class="hidden">
-      <div class="row" style="margin-top:10px">
+   </header>
+   <main>
+    <section>
+     <div class="panel">
+      <div class="eyebrow">IDENTIFICACIÓN MAESTRA</div>
+      <h1>Código NEXUS-X → ficha</h1>
+      <div class="muted small">El catálogo se carga automáticamente desde la raíz del repositorio. No se carga ningún Excel desde la interfaz.</div>
+      <div class="search">
+       <input id="codeInput" autocomplete="off" placeholder="Ingresá o escaneá un código NEXUS-X">
+       <button class="btn primary" id="searchBtn">VER FICHA</button>
+       <button class="btn" id="cameraBtn">📷 ESCANEAR</button>
+      </div>
+      <div id="lookupStatus" class="small muted" style="margin-top:8px"></div>
+      <div id="ficha"></div>
+     </div>
+     <div class="panel" style="margin-top:14px">
+      <div class="eyebrow">DOCUMENTACIÓN</div>
+      <h2>Manuales y protocolos</h2>
+      <div class="row" style="margin-bottom:8px">
+       <button class="btn" id="refreshDocs">↻ ACTUALIZAR DOCUMENTOS</button>
+       <span class="small muted" id="docsStatus"></span>
+      </div>
+      <div id="docList" class="doc-list"></div>
+      <div id="viewerWrap" class="hidden">
+       <div class="row" style="margin-top:10px">
         <strong id="docTitle"></strong>
         <button class="btn" id="extractBtn">EXTRAER TEXTO</button>
+       </div>
+       <div class="viewer">
+        <iframe id="pdfFrame" title="Visor PDF"></iframe>
+       </div>
+       <pre id="pdfText" class="pdftext hidden"></pre>
       </div>
-      <div class="viewer"><iframe id="pdfFrame" title="Visor PDF"></iframe></div>
-      <pre id="pdfText" class="pdftext hidden"></pre>
-    </div>
+     </div>
+    </section>
+    <aside>
+     <div class="panel">
+      <div class="eyebrow">ASISTENTE TÉCNICO</div>
+      <h2>IA + búsqueda web</h2>
+      <div class="muted small">La IA recibe la ficha NEXUS-X y, cuando corresponde, puede consultar información web en tiempo real.</div>
+      <div id="aiLog" class="ai-log" style="margin-top:12px">
+       <div class="empty">Seleccioná una ficha o escribí una pregunta.</div>
+      </div>
+      <textarea id="aiInput" class="ai-input" rows="4" placeholder="Ej.: ¿Cuál es el protocolo para realizar esta fórmula?"></textarea>
+      <div class="row">
+       <button class="btn primary" id="askBtn">🤖 PREGUNTAR</button>
+       <button class="btn" id="settingsBtn">⚙ IA</button>
+       <button class="btn" id="clearBtn">LIMPIAR</button>
+      </div>
+     </div>
+     <div class="panel hidden" id="settingsPanel" style="margin-top:14px">
+      <div class="eyebrow">CONFIGURACIÓN EXPERIMENTAL</div>
+      <h3>Gemini API</h3>
+      <div class="settings">
+       <input id="apiKey" type="password" placeholder="Pegá tu Gemini API Key">
+       <div class="small muted">La clave queda solamente en este navegador. Para una exposición es práctico, pero para producción conviene usar un backend/proxy.</div>
+       <button class="btn primary" id="saveKey">GUARDAR CLAVE</button>
+       <button class="btn danger" id="deleteKey">BORRAR CLAVE LOCAL</button>
+      </div>
+     </div>
+     <div class="panel" style="margin-top:14px">
+      <div class="eyebrow">BASE DE DATOS</div>
+      <div id="dbStats" class="small muted">Cargando…</div>
+      <div class="small muted" style="margin-top:7px">
+       Fuente primaria: <b>catalogo_maestro.json</b> en la raíz. Respaldo automático: <b>Sustancias_Lab. de CN_.xlsx</b>.
+      </div>
+     </div>
+     <div class="panel hidden" id="cameraPanel" style="margin-top:14px">
+      <div class="eyebrow">LECTOR QR</div>
+      <div class="camera">
+       <video id="camera" playsinline muted></video>
+       <div class="row">
+        <button class="btn primary" id="startCamera">INICIAR CÁMARA</button>
+        <button class="btn" id="stopCamera">DETENER</button>
+       </div>
+       <input id="imageQr" type="file" accept="image/*" class="btn">
+       <div id="cameraStatus" class="small muted"></div>
+      </div>
+     </div>
+    </aside>
+   </main>
+   <footer>NEXUS-X // Laboratorio Escolar Técnico · catálogo local + documentación + IA</footer>
   </div>
-</section>
-
-<aside>
-  <div class="panel">
-    <div class="eyebrow">ASISTENTE TÉCNICO</div>
-    <h2>IA + búsqueda web</h2>
-    <div class="muted small">La IA recibe la ficha NEXUS-X y, cuando corresponde, puede consultar información web en tiempo real.</div>
-    <div id="aiLog" class="ai-log" style="margin-top:12px">
-      <div class="empty">Seleccioná una ficha o escribí una pregunta.</div>
-    </div>
-    <textarea id="aiInput" class="ai-input" rows="4" placeholder="Ej.: ¿Cuál es el protocolo para realizar esta fórmula?"></textarea>
-    <div class="row">
-      <button class="btn primary" id="askBtn">🤖 PREGUNTAR</button>
-      <button class="btn" id="settingsBtn">⚙ IA</button>
-      <button class="btn" id="clearBtn">LIMPIAR</button>
-    </div>
-  </div>
-
-  <div class="panel hidden" id="settingsPanel" style="margin-top:14px">
-    <div class="eyebrow">CONFIGURACIÓN EXPERIMENTAL</div>
-    <h3>Gemini API</h3>
-    <div class="settings">
-      <input id="apiKey" type="password" placeholder="Pegá tu Gemini API Key">
-      <div class="small muted">La clave queda solamente en este navegador. Para una exposición es práctico, pero para producción conviene usar un backend/proxy.</div>
-      <button class="btn primary" id="saveKey">GUARDAR CLAVE</button>
-      <button class="btn danger" id="deleteKey">BORRAR CLAVE LOCAL</button>
-    </div>
-  </div>
-
-  <div class="panel" style="margin-top:14px">
-    <div class="eyebrow">BASE DE DATOS</div>
-    <div id="dbStats" class="small muted">Cargando…</div>
-    <div class="small muted" style="margin-top:7px">Fuente primaria: <b>catalogo_maestro.json</b> en la raíz. Respaldo automático: <b>Sustancias_Lab. de CN_.xlsx</b>.</div>
-  </div>
-
-  <div class="panel hidden" id="cameraPanel" style="margin-top:14px">
-    <div class="eyebrow">LECTOR QR</div>
-    <div class="camera">
-      <video id="camera" playsinline muted></video>
-      <div class="row"><button class="btn primary" id="startCamera">INICIAR CÁMARA</button><button class="btn" id="stopCamera">DETENER</button></div>
-      <input id="imageQr" type="file" accept="image/*" class="btn">
-      <div id="cameraStatus" class="small muted"></div>
-    </div>
-  </div>
-</aside>
-</main>
-<footer>NEXUS-X // Laboratorio Escolar Técnico · catálogo local + documentación + IA</footer>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
 "use strict";
 
 /* ============================================================
@@ -243,51 +247,43 @@ async function loadDatabase(){
 function canonicalNexusId(value){
   let s=String(value ?? "").trim();
   if(!s) return "";
-
-  // URLs con ?id=... o ?nexus=...
   try{
     const u=new URL(s);
-    const id=u.searchParams.get("id") || u.searchParams.get("nexus");
-    if(id) s=id;
+    const candidate=u.searchParams.get("id") ||
+                    u.searchParams.get("nexus");
+    if(candidate) s=candidate;
   }catch{}
-
   s=s.replace(/^NEXUS:\/\//i,"")
        .replace(/^NEXUS:/i,"")
        .replace(/\s+/g,"")
        .toUpperCase();
 
-  // Compatibilidad con los formatos históricos/QR que ya puedan existir.
-  s=s.replace(/^NEXUS[-_]?NSUT[-_]?(\d+)$/,"NX-SUST-$1");
-  s=s.replace(/^NEXUS[-_]?SUST[-_]?(\d+)$/,"NX-SUST-$1");
-  s=s.replace(/^NX[-_]?NSUT[-_]?(\d+)$/,"NX-SUST-$1");
-  s=s.replace(/^NX[-_]?SUST[-_]?(\d+)$/,"NX-SUST-$1");
-
-  // Si ya viene como NEXUS + el código NX-SUST, quitamos solamente el envoltorio.
-  if(/^NEXUS[-_]?NX-SUST-\d+$/.test(s)) s=s.replace(/^NEXUS[-_]?/,"");
-
+  let m=s.match(/^NEXUS[-_]?NSUT[-_]?(\d+)$/);
+  if(m) return `NX-SUST-${String(Number(m[1])).padStart(4,"0")}`;
+  m=s.match(/^NEXUS[-_]?SUST[-_]?(\d+)$/);
+  if(m) return `NX-SUST-${String(Number(m[1])).padStart(4,"0")}`;
+  m=s.match(/^NX[-_]?NSUT[-_]?(\d+)$/);
+  if(m) return `NX-SUST-${String(Number(m[1])).padStart(4,"0")}`;
+  m=s.match(/^NX[-_]?SUST[-_]?(\d+)$/);
+  if(m) return `NX-SUST-${String(Number(m[1])).padStart(4,"0")}`;
+  if(/^NEXUS[-_]?NX-SUST-\d{4}$/.test(s)) s=s.replace(/^NEXUS[-_]?/,"");
   return s;
 }
 
 function normalizeQrPayload(raw){
-  const canonical=canonicalNexusId(raw);
-  return canonical ? `NEXUS:${canonical}` : "";
+  const id=canonicalNexusId(raw);
+  return id ? `NEXUS:${id}` : "";
 }
 
 function lookupCode(value){
   const q=canonicalNexusId(value);
   if(!q) return null;
-
-  return DB.records.find(r => {
+  return DB.records.find(r=>{
     const candidates=[
-      r._NEXUS_ID,
-      r["CODIGO NEXUS"],
-      r["CÓDIGO NEXUS"],
-      r["QR NEXUS"],
-      r["QR"],
-      r["ID NEXUS"],
-      r["ID"]
+      r._NEXUS_ID,r["CODIGO NEXUS"],r["CÓDIGO NEXUS"],
+      r["QR NEXUS"],r["QR"],r["ID NEXUS"],r["ID"]
     ];
-    return candidates.some(v => canonicalNexusId(v)===q);
+    return candidates.some(v=>canonicalNexusId(v)===q);
   }) || null;
 }
 
@@ -486,8 +482,6 @@ async function askAI(){
 
 /* ---------- QR / cámara ---------- */
 function cleanQr(value){
-  // Conserva el payload completo. La normalización NEXUS-X
-  // se realiza posteriormente en canonicalNexusId().
   return String(value || "").trim();
 }
 async function startCamera(){
@@ -539,14 +533,19 @@ async function readImageQr(file){
 /* ---------- Eventos ---------- */
 function searchCode(){
   const value=cleanQr($("codeInput").value);
-  if(!value){$("lookupStatus").textContent="Ingresá un código.";return;}
-  const record=lookupCode(value);
+  const canonical=canonicalNexusId(value);
+  if(!canonical){
+    $("lookupStatus").textContent="Ingresá un código.";
+    return;
+  }
+  const record=lookupCode(canonical);
+  $("codeInput").value=canonical;
   if(record){
-    $("lookupStatus").textContent=`✓ Registro encontrado · ${record._NEXUS_ID}`;
+    $("lookupStatus").textContent=`✓ Registro encontrado · ${canonical}`;
     renderFicha(record);
-    $("aiInput").value=`Tengo la ficha ${record._NEXUS_ID}. ¿Qué protocolo corresponde y qué precauciones debo verificar?`;
+    if($("aiInput")) $("aiInput").value=`Tengo la ficha ${canonical}. ¿Qué protocolo corresponde y qué precauciones debo verificar?`;
   }else{
-    $("lookupStatus").textContent=`✗ ${normalizeQrPayload(value) || value} no está registrado en el catálogo maestro.`;
+    $("lookupStatus").textContent=`✗ ${canonical} no está registrado en el catálogo maestro.`;
     renderFicha(null);
   }
 }
@@ -568,12 +567,16 @@ $("deleteKey").onclick=()=>{localStorage.removeItem("nexus_gemini_api_key");$("a
 window.addEventListener("beforeunload",stopCamera);
 
 (async function boot(){
+  $("systemStatus").textContent="Inicializando catálogo maestro…";
   await loadDatabase();
+  if(!DB.records.length){
+    $("systemStatus").textContent="CATÁLOGO NO DISPONIBLE";
+    return;
+  }
   await loadDocuments();
 })();
 </script>
-
-<!--
+  <!--
 NOTA DE ARQUITECTURA:
 1) No existe carga manual de Excel.
 2) La fuente primaria es catalogo_maestro.json en la raíz.
@@ -582,5 +585,5 @@ NOTA DE ARQUITECTURA:
 5) El repositorio experimental es SIEMPRE miqueas80/laboratorio-escolar-tecnico.
 6) Gemini 3.8 Flash + Google Search se usa desde la API de Interactions.
 -->
-</body>
+ </body>
 </html>
