@@ -16,8 +16,6 @@
 @media(max-width:850px){.app{grid-template-columns:72px 1fr}.brand{min-width:auto}.brand-sub,.user span{display:none}.top-search{max-width:none}.grid.stats{grid-template-columns:repeat(2,1fr)}.grid.two{grid-template-columns:1fr}.nav-btn{font-size:9px}.main{padding:12px}.topbar{padding:0 10px;gap:10px}.brand-name{font-size:13px}.form-grid{grid-template-columns:1fr}.form-grid .wide{grid-column:auto}}
 @media(max-width:520px){.top-actions .hide-sm{display:none}.grid.stats{grid-template-columns:1fr 1fr}.page-head{align-items:flex-start;gap:8px;flex-direction:column}}
 </style>
-<style>
-.doc-ai-circle{width:38px;height:38px;border-radius:50%;border:1px solid #8fcfd3;background:#e8f7f7;color:#146b75;font-weight:900;cursor:pointer;box-shadow:0 2px 7px #0001}.doc-ai-circle:hover{transform:translateY(-1px);box-shadow:0 4px 12px #0002}.document-frame{width:100%;height:68vh;border:1px solid var(--line);border-radius:8px;background:#f3f6f7}.document-text{white-space:pre-wrap;font-family:ui-monospace,SFMono-Regular,monospace;font-size:12px;line-height:1.55;background:#fbfcfc;border:1px solid var(--line);border-radius:8px;padding:16px;max-height:68vh;overflow:auto}.viewer-modal{width:min(1200px,98vw);height:min(92vh,900px);display:flex;flex-direction:column}.viewer-body{min-height:0;flex:1;overflow:auto}.viewer-ai-head{display:flex;align-items:center;gap:10px}.viewer-ai-circle{width:46px;height:46px;border-radius:50%;border:0;background:#155f6e;color:white;font-weight:900;cursor:pointer}.viewer-ai-circle.active{background:#229ca7}.viewer-tabs{display:flex;gap:7px;align-items:center;margin-bottom:10px}.viewer-ai-layout{display:grid;grid-template-columns:1fr;gap:10px}.viewer-ai-layout .chat{height:55vh}@media(max-width:800px){.viewer-modal{height:94vh}.document-frame{height:58vh}.viewer-ai-layout .chat{height:52vh}}</style>
 </head>
 <body>
 <div class="app">
@@ -75,28 +73,8 @@
   <div class="grid two"><div class="card"><h2>Resumen</h2><div id="reportSummary"></div></div><div class="card"><h2>Integridad</h2><div id="integrityBox" class="diagnostic"></div></div></div>
 </section>
 <section id="view-settings" class="view">
-  <div class="page-head"><div><h1>Ajustes</h1><p>Configuración automática: pegás la clave una sola vez y NEXUS-X configura IA + Internet sin endpoints ni modelos manuales.</p></div></div>
-  <div class="grid two">
-    <div class="card">
-      <h2>🔐 API de NEXUS-X</h2>
-      <p class="muted">Proveedor integrado: <strong>Gemini</strong>. La misma API Key permite usar IA y Búsqueda de Google en tiempo real. La clave se guarda solamente en el almacenamiento local de este navegador; nunca se escribe en GitHub.</p>
-      <div class="field"><label>Proveedor</label><select id="apiProvider"><option value="gemini">Google Gemini · IA + Google Search</option></select></div>
-      <div class="field"><label>API Key</label><input id="apiKey" type="password" autocomplete="off" placeholder="Pegá tu clave una sola vez"></div>
-      <div class="toolbar"><button class="btn primary" id="saveApiBtn">Guardar y conectar</button><button class="btn danger" id="clearApiBtn">Eliminar clave</button></div>
-      <div id="apiStatus" class="notice section">Sin API configurada.</div>
-    </div>
-    <div class="card">
-      <h2>📚 Repositorio documental</h2>
-      <p class="muted">NEXUS-X detecta automáticamente el repositorio de GitHub Pages donde está instalado y busca PDF, DOCX, XLSX, XLS, CSV, TXT y Markdown. La sincronización se ejecuta al iniciar.</p>
-      <div class="form-grid"><div class="field"><label>Propietario</label><input id="repoOwner"></div><div class="field"><label>Repositorio</label><input id="repoName"></div><div class="field"><label>Rama</label><input id="repoBranch" value="main"></div></div>
-      <div class="toolbar"><button class="btn primary" id="saveRepoSettingsBtn">Guardar repositorio</button><button class="btn" id="syncRepoSettingsBtn">↻ Sincronizar ahora</button></div>
-      <div id="repoConfigStatus" class="notice section">Repositorio no detectado.</div>
-    </div>
-  </div>
-  <div class="grid two section">
-    <div class="card"><h2>Diagnóstico</h2><div id="settingsDiag" class="diagnostic"></div></div>
-    <div class="card"><h2>Datos locales</h2><p class="muted">Podés borrar inventario modificado, favoritos, historial y caché documental sin borrar la API guardada.</p><button class="btn danger" id="clearLocalBtn">Borrar datos locales modificables</button></div>
-  </div>
+  <div class="page-head"><div><h1>Ajustes</h1><p>Configuración segura y diagnóstico. Las claves no se almacenan permanentemente.</p></div></div>
+  <div class="grid two"><div class="card"><h2>IA opcional</h2><div class="field"><label>Endpoint compatible (OpenAI-compatible)</label><input id="aiEndpoint" placeholder="https://…/v1/chat/completions"></div><div class="field"><label>Modelo</label><input id="aiModel" placeholder="modelo"></div><div class="field"><label>API Key de sesión</label><input id="aiKey" type="password" placeholder="No se guarda en el repositorio"></div><button class="btn primary" id="saveAiBtn">Guardar en esta sesión</button></div><div class="card"><h2>Diagnóstico</h2><div id="settingsDiag" class="diagnostic"></div><div class="section"><button class="btn danger" id="clearLocalBtn">Borrar datos locales modificables</button></div></div></div>
 </section>
 </main>
 </div>
@@ -106,18 +84,6 @@
 <div id="wordInputWrap" style="display:none"><input id="wordInput" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"></div>
 <div id="excelInputWrap" style="display:none"><input id="excelInput" type="file" accept=".xlsx,.xls,.csv"></div>
 <div id="pdfInputWrap" style="display:none"><input id="pdfInput" type="file" accept=".pdf"></div>
-
-<div id="documentViewerModal" class="modal-backdrop">
-  <div class="modal viewer-modal">
-    <div class="modal-head"><div><h2 id="viewerTitle">Documento</h2><div id="viewerMeta" class="muted"></div></div><button class="close" id="viewerCloseBtn">✕</button></div>
-    <div class="viewer-tabs"><button class="btn teal" id="viewerDocumentBtn" data-viewer-tab="document">▣ Documento</button><button class="viewer-ai-circle" id="viewerAiBtn" data-viewer-tab="ai" title="Preguntar a Gemini sobre este documento">AI</button><span class="muted">Gemini 3.8 Flash · contexto del documento</span></div>
-    <div class="viewer-body">
-      <div id="viewerDocumentPane"></div>
-      <div id="viewerAiPane" style="display:none"><div class="viewer-ai-layout"><div class="chat" id="viewerAiChat"></div><div class="search-row section"><input id="viewerAiInput" placeholder="Preguntá sobre este documento… Ej.: ¿qué dice sobre seguridad? ¿está actualizado?"><button class="btn primary" id="viewerAskBtn">Preguntar</button></div><div class="notice">Las preguntas normales se responden con el documento. Si preguntás por actualidad, cambios, vigencia o información externa, NEXUS-X intenta comprobarlo en Internet y lo separa de la evidencia documental.</div></div></div>
-    </div>
-  </div>
-</div>
-
 <div id="documentInputWrap" style="display:none"><input id="documentInput" type="file" accept=".pdf,.docx,.xlsx,.xls,.csv,.txt,.md"></div>
 <div id="toast" class="toast"></div>
 <div id="commandModal" class="modal-backdrop"><div class="modal" style="max-width:620px"><div class="modal-head"><h2>Paleta de comandos</h2><button class="close" data-close="commandModal">Cerrar</button></div><div class="notice">Atajo: <span class="kbd">Ctrl/⌘ K</span> · Ejecutá acciones sin navegar por los menús.</div><div id="commandList" class="command-list section"></div></div></div>
