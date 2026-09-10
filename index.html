@@ -295,11 +295,11 @@
        <strong>IDENTIDAD ESTRUCTURADA DEL EXCEL</strong><span id="schemaSummary">Sin esquema cargado</span>
       </div>
       <div id="schemaGrid" class="schema-grid">
-       <div class="loading">Importá un Excel para asignar códigos persistentes a sus columnas.</div>
+       <div class="loading">Importá un Excel: cada fila recibirá un único ID NEXUS; las columnas son atributos.</div>
       </div>
       <div id="excelPreview" class="excel-preview"></div>
       <div class="identity-note">
-       Cada columna recibe un código <b>NXC</b> estable. Cada material conserva su <b>ID NEXUS</b> y cada dato queda vinculado a su columna, registro y fuente. NEXUS-X no cambia silenciosamente el Excel original.
+       <b>Una fila = un registro = un único ID NEXUS.</b> Las columnas son atributos de esa misma ficha. El Excel original no se modifica silenciosamente.
       </div>
      </div>
     </section>
@@ -1816,8 +1816,23 @@ async function handleLocalResearchFile(file) {
   }
 }
 
-function loadNexusSchema(){try{return JSON.parse(localStorage.getItem("nexus_schema")||"[]");}catch{return [];}}
-function saveNexusSchema(){localStorage.setItem("nexus_schema",JSON.stringify(nexusSchema));}
+function loadNexusSchema(){
+  try{
+    const version=localStorage.getItem("nexus_schema_version");
+    if(version!=="2-row-record"){
+      localStorage.removeItem("nexus_schema");
+      localStorage.setItem("nexus_schema_version","2-row-record");
+      return [];
+    }
+    const data=JSON.parse(localStorage.getItem("nexus_schema")||"[]");
+    if(!Array.isArray(data))return [];
+    return data.filter(x=>x&&x.kind==="attribute"&&!x.code&&x.canonical);
+  }catch{return [];}
+}
+function saveNexusSchema(){
+  localStorage.setItem("nexus_schema_version","2-row-record");
+  localStorage.setItem("nexus_schema",JSON.stringify(nexusSchema));
+}
 function canonicalHeader(v){return normalizeStr(v).replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"").toUpperCase()||"CAMPO";}
 function allocateColumnCode(){return "";}
 function buildSchemaFromHeaders(headers){
@@ -1827,7 +1842,7 @@ function buildSchemaFromHeaders(headers){
     while(seen.has(canon))canon=`${base}_${i++}`;seen.add(canon);
     let schema=nexusSchema.find(x=>x.canonical===canon);
     if(!schema){schema={header:raw,canonical:canon,kind:"attribute",createdAt:new Date().toISOString()};nexusSchema.push(schema);}
-    else{schema.header=schema.header||raw;schema.kind="attribute";delete schema.code;}
+    else{schema.header=raw;schema.kind="attribute";delete schema.code;}
     unique.push({header:raw,canonical:canon,kind:"attribute"});
   }
   saveNexusSchema();return unique;
@@ -1836,7 +1851,7 @@ function renderNexusSchema(headers=nexusSchema.map(x=>x.header)){
   const grid=$("#schemaGrid"),summary=$("#schemaSummary");if(!grid)return;
   const list=headers.length?headers.map(h=>{const c=canonicalHeader(h);return nexusSchema.find(x=>x.canonical===c)||{header:h,canonical:c,kind:"attribute"};}):[];
   if(!list.length){summary.textContent="Sin esquema cargado";grid.innerHTML='<div class="loading">Importá un Excel para ver sus columnas como atributos de la ficha.</div>';return;}
-  summary.textContent=`${list.length} columnas · atributos de la ficha`;
+  summary.textContent=`${list.length} columnas · atributos de la ficha · 1 ID por fila`;
   grid.innerHTML=list.map(x=>`<div class="schema-chip"><b title="${escapeHtml(x.header)}">${escapeHtml(x.header)}</b><span>${escapeHtml(x.canonical)}</span><code>ATRIBUTO</code></div>`).join("");
 }
 function stableHash(text){let h=2166136261;for(let i=0;i<text.length;i++){h^=text.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(16).padStart(8,"0").toUpperCase();}
@@ -1920,6 +1935,10 @@ async function importInventoryWorkbook(file){
     if(!wb.SheetNames.length)throw new Error("El libro no contiene hojas.");
 
     lastImportedWorkbook=file.name||"inventario.xlsx";
+    // El esquema visible pertenece al libro que se acaba de importar.
+    // Nunca arrastrar columnas de libros/versiones anteriores.
+    nexusSchema=[];
+    saveNexusSchema();
     const sheets=[];
     let totalRows=0,skipped=0,generated=0,added=0,updated=0;
 
@@ -1929,8 +1948,18 @@ async function importInventoryWorkbook(file){
       if(!matrix.length)continue;
 
       const headerIndex=detectHeaderRow(matrix);
-      const rawHeaders=(matrix[headerIndex]||[])
-        .map((v,i)=>String(v??"").trim()||`CAMPO_${i+1}`);
+      const headerRow=matrix[headerIndex]||[];
+      // Ignorar columnas totalmente vacías del final del XLSX (formato residual).
+      // Una columna solo entra al esquema si tiene encabezado o al menos un dato real.
+      const lastUsedColumn=headerRow.reduce((last,v,i)=>{
+        if(String(v??"").trim()!="") return i;
+        for(let r=headerIndex+1;r<matrix.length;r++){
+          if(String(matrix[r]?.[i]??"").trim()!="") return i;
+        }
+        return last;
+      },-1);
+      if(lastUsedColumn<0) continue;
+      const rawHeaders=headerRow.slice(0,lastUsedColumn+1).map((v,i)=>String(v??"").trim()||`CAMPO_${i+1}`);
 
       const headers=[];
       const seenHeaders=new Map();
@@ -2062,7 +2091,7 @@ async function importInventoryWorkbook(file){
       `Excel indexado correctamente · ${totalRows} registros · `+
       `${sheets.length} hojas · ${generated} IDs nuevos · `+
       `${updated} actualizados · ${skipped} filas omitidas · `+
-      `${nexusSchema.length} columnas como atributos.`;
+      `${nexusSchema.length} atributos de ficha.`;
 
     addMsg("#mainChatBox",`>> ${report}`,"system");
     showToast(report);
@@ -2107,7 +2136,7 @@ return row;
     ["NEXUS-X · IDENTIDAD DEL INVENTARIO"],
     ["Generado",new Date().toISOString()],
     ["Registros",inventory.length],
-    ["Columnas codificadas",nexusSchema.length],
+    ["Atributos del Excel",nexusSchema.length],
     ["Regla","Los IDs existentes se conservan; los faltantes se generan y quedan persistidos localmente."],
     ["Nota","El Excel original no se modifica; esta es una exportación enriquecida por NEXUS-X."]
   ];
