@@ -108,6 +108,7 @@
        <button class="tool-toggle" id="deepModeBtn">◉ Modo profundo</button>
        <button class="tool-toggle" id="adversarialBtn">◇ Análisis adversarial</button>
        <button class="tool-toggle" id="repoModeBtn">⌁ Usar documentos del repositorio</button>
+       <button class="tool-toggle" id="webModeBtn">🌐 Buscar en Internet</button>
        <input id="researchFileInput" type="file" accept=".pdf,.txt,.md,.xlsx,.xls,.csv,image/*" hidden>
       </div>
       <div class="examples">
@@ -235,7 +236,7 @@
      </div>
      <div class="inventory-grid">
       <div class="field">
-       <label>ID NEXUS *</label><input id="invId" placeholder="NEXUS:H2SO4-001">
+       <label>ID NEXUS *</label><input id="invId" placeholder="NEXUS-X-0001">
       </div>
       <div class="field">
        <label>NOMBRE *</label><input id="invName" placeholder="Ácido sulfúrico">
@@ -329,7 +330,7 @@
       <button class="danger" id="stopCameraBtn">Detener</button>
      </div>
      <div class="manual-scan">
-      <input id="manualQrInput" placeholder="O ingresá NEXUS:H2SO4-001">
+      <input id="manualQrInput" placeholder="O ingresá NEXUS-X-0001">
       <button id="manualQrBtn">Leer ID</button>
      </div>
      <div class="file-row">
@@ -673,11 +674,11 @@ function saveInventoryItem() {
     showToast("Completá ID NEXUS y nombre.");
     return;
   }
-  if (!/^NEXUS:[A-Za-z0-9._:-]+$/i.test(item.id)) {
-    showToast("El ID debe tener formato NEXUS:XXXX-001.");
+  if (!isNexusRecordCode(normalizeNexusId(item.id))) {
+    showToast("El ID debe tener formato NEXUS-X-0001.");
     return;
   }
-  item.id = normalizeQrPayload(item.id);
+  item.id = normalizeNexusId(item.id);
   const idx = inventory.findIndex(x => x.id.toLowerCase() === item.id.toLowerCase());
   if (idx >= 0) inventory[idx] = {...inventory[idx],...item};
   else inventory.push(item);
@@ -692,8 +693,8 @@ function deleteInventoryItem() {
     showToast("Seleccioná primero un registro.");
     return;
   }
-  const target = normalizeQrPayload(activeInventoryId).toLowerCase();
-  inventory = inventory.filter(x => normalizeQrPayload(x.id).toLowerCase() !== target);
+  const target = normalizeNexusId(activeInventoryId).toLowerCase();
+  inventory = inventory.filter(x => normalizeNexusId(x.id).toLowerCase() !== target);
   saveInventoryStore();
   clearInventoryForm();
   renderInventoryList();
@@ -701,9 +702,9 @@ function deleteInventoryItem() {
 }
 function upsertInventoryItem(item, {quiet=false}={}) {
   if (!item?.id || !item?.name) return false;
-  item.id = normalizeQrPayload(item.id);
-  if (!/^NEXUS:[A-Z0-9._:-]+$/.test(item.id)) return false;
-  const idx = inventory.findIndex(x => normalizeQrPayload(x.id).toLowerCase() === item.id.toLowerCase());
+  item.id = normalizeNexusId(item.id);
+  if (!isNexusRecordCode(item.id)) return false;
+  const idx = inventory.findIndex(x => normalizeNexusId(x.id).toLowerCase() === item.id.toLowerCase());
   if (idx >= 0) inventory[idx] = {...inventory[idx],...item,updatedAt:new Date().toISOString()};
   else inventory.push({...item,updatedAt:new Date().toISOString()});
   if (!quiet) saveInventoryStore();
@@ -826,22 +827,45 @@ async function openFicha(raw, page=1) {
 /* =========================================================
    QR: CÁMARA + IMAGEN + MANUAL
    ========================================================= */
-function normalizeQrPayload(raw) {
-  let text = String(raw || "").trim();
+function normalizeNexusId(raw) {
+  let text = String(raw ?? "").trim();
   if (!text) return "";
+
+  // A QR can contain a URL, a URI, NEXUS:X-0001, NEXUS-X-0001, or just X-0001.
   try {
     const url = new URL(text);
     const id = url.searchParams.get("id") || url.searchParams.get("nexus");
     if (id) text = id;
   } catch {}
-  text = text.replace(/^nexus[-:]?\s*/i, "").replace(/\s+/g, "").toUpperCase();
-  const m = text.match(/(?:X[-:]?)?(\d{1,6})$/i);
-  if (/^(?:X[-:]?)?\d{1,6}$/i.test(text)) return `NEXUS-X-${String(text.replace(/^X[-:]?/i, "")).padStart(4,"0")}`;
-  const nx = text.match(/^NEXUS[-:]?X[-:]?(\d{1,6})$/i);
-  if (nx) return `NEXUS-X-${String(nx[1]).padStart(4,"0")}`;
-  const old = text.match(/^C[-:]?(\d{1,6})$/i);
-  if (old) return `NEXUS-X-${String(old[1]).padStart(4,"0")}`;
-  return text.startsWith("NEXUS-X-") ? text : `NEXUS-X-${text}`;
+
+  text = text.replace(/^nexus:\/\//i, "").trim();
+  text = text.replace(/^nexus:/i, "").trim();
+  text = text.replace(/^nexus[-_]?x[-_: ]?/i, "").trim();
+
+  // Accept the historical X-0001 / NX-0001 / 0001 forms.
+  const match = text.match(/(?:^|[^A-Z0-9])X[-_: ]?(\d{1,6})(?:$|[^A-Z0-9])/i);
+  if (match) {
+    return `NEXUS-X-${String(Number(match[1])).padStart(4, "0")}`;
+  }
+
+  const numeric = text.match(/^\d{1,6}$/);
+  if (numeric) {
+    return `NEXUS-X-${String(Number(numeric[0])).padStart(4, "0")}`;
+  }
+
+  // Preserve a canonical NEXUS-X identifier with a numeric suffix.
+  const canonical = text.match(/^NEXUS[-_]?X[-_: -]?(\d{1,6})$/i);
+  if (canonical) {
+    return `NEXUS-X-${String(Number(canonical[1])).padStart(4, "0")}`;
+  }
+
+  // Allow a stable alphanumeric legacy payload as NEXUS-X-XXXX only when
+  // it already has the project prefix; otherwise it is not a record ID.
+  return "";
+}
+
+function normalizeQrPayload(raw) {
+  return normalizeNexusId(raw);
 }
 
 function setQrCameraState(state){
@@ -870,7 +894,7 @@ async function processQr(raw) {
   await stopCamera();
   setQrCameraState("detected");
   const id = normalizeQrPayload(raw);
-  if (!id || id === "NEXUS:") {
+  if (!id) {
     $("#qrResult").textContent = "No pude extraer un ID NEXUS del código.";
     return;
   }
@@ -913,7 +937,7 @@ async function processQr(raw) {
       clearInventoryForm();
       $("#inventoryOverlay").classList.add("open");
       $("#invId").value = id;
-      $("#invFormula").value = id.replace(/^NEXUS:/,"").split("-")[0];
+      $("#invFormula").value = id.replace(/^NEXUS-X-/,"");
       $("#invName").focus();
     });
     document.querySelectorAll(".qr-open-doc").forEach(btn =>
@@ -1156,7 +1180,7 @@ async function githubContents(path="") {
     `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/`+
     encodedPath+`?ref=${encodeURIComponent(GITHUB_CONFIG.branch)}`;
 
-  const res = await fetch(url,{headers:{"Accept":"application/vnd.github+json"}});
+  const res = await fetchWithTimeout(url,{headers:{"Accept":"application/vnd.github+json"}},10000);
   if (!res.ok) {
     const body = await res.text().catch(()=> "");
     throw new Error(`GitHub ${res.status}: ${body.slice(0,180)}`);
@@ -1611,10 +1635,10 @@ async function searchWeb(query){
   // Reader es el camino principal porque ofrece uso básico gratuito sin
   // API key; los demás son respaldos independientes.
   const providers=[
-    ["Google vía Jina Reader",()=>searchReaderEngine(clean,"google")],
-    ["Bing vía Jina Reader",()=>searchReaderEngine(clean,"bing")],
+    ["DuckDuckGo",()=>searchDuckDuckGo(clean)],
     ["Jina Search",()=>searchJinaWeb(clean)],
-    ["DuckDuckGo",()=>searchDuckDuckGo(clean)]
+    ["Google vía Jina Reader",()=>searchReaderEngine(clean,"google")],
+    ["Bing vía Jina Reader",()=>searchReaderEngine(clean,"bing")]
   ];
 
   for(const [name,fn] of providers){
@@ -1716,7 +1740,36 @@ async function handleMainGlobalQuery() {
     }
   }
 
-  // Si existe evidencia local, conservar el flujo original.
+  const webRequested = $("#webModeBtn")?.classList.contains("active");
+
+  // Si el usuario activó Internet, la búsqueda web se ejecuta aunque también
+  // exista evidencia local. La evidencia local nunca se mezcla silenciosamente.
+  if(webRequested){
+    addMsg("#mainChatBox",
+      ">> Modo Internet activo. Buscando fuentes externas y manteniendo separada la evidencia local...",
+      "system");
+    try{
+      const web=await runWebFallback(val);
+      const webCard=addMsg("#mainChatBox",
+        `🌐 Internet encontró ${web.results.length} fuentes (${web.provider}).`,
+        "ai");
+      const webAnswer=await answerFromWeb(val,web.results);
+      if(webAnswer){
+        const answerBox=document.createElement("div");
+        answerBox.className="msg ai";
+        answerBox.innerHTML=formatAiText(webAnswer);
+        webCard.appendChild(answerBox);
+      }
+      webCard.appendChild(renderWebResults(web.results,web.provider));
+    }catch(err){
+      console.error("Búsqueda web:",err);
+      addMsg("#mainChatBox",
+        `⚠️ Internet no respondió. La investigación local continuará. ${err.message||err}`,
+        "error");
+    }
+  }
+
+  // Conservar el flujo local-first cuando hay evidencia local.
   if(matches.length){
     const aiMsg=addMsg("#mainChatBox",`Se encontraron ${matches.length} manuales relacionados con "${val}":`,"ai");
 
@@ -1768,7 +1821,12 @@ async function handleMainGlobalQuery() {
     return;
   }
 
-  // Sin evidencia local: Internet como respaldo, nunca como reemplazo del repositorio.
+  // Sin evidencia local: Internet como respaldo, salvo que ya se ejecutó
+  // explícitamente arriba mediante el modo Internet.
+  if(webRequested){
+    $("#mainChatBox").scrollTop=$("#mainChatBox").scrollHeight;
+    return;
+  }
   addMsg("#mainChatBox",
     ">> No hay evidencia local suficiente. Activando búsqueda web gratuita...",
     "system");
@@ -1870,7 +1928,7 @@ function extractInteractionText(data) {
 }
 
 async function callGeminiInteractions(prompt,key){
-  const res=await fetch(GEMINI_INTERACTIONS_URL,{
+  const res=await fetchWithTimeout(GEMINI_INTERACTIONS_URL,{
     method:"POST",
     headers:{
       "Content-Type":"application/json",
@@ -1881,7 +1939,7 @@ async function callGeminiInteractions(prompt,key){
       input:prompt,
       store:false
     })
-  });
+  },15000);
 
   const data=await res.json().catch(()=>({}));
   if(!res.ok){
@@ -1898,7 +1956,7 @@ async function callGeminiLegacy(prompt,key){
 
   for(const model of GEMINI_MODELS){
     try{
-      const res=await fetch(`${GEMINI_GENERATE_BASE}${model}:generateContent`,{
+      const res=await fetchWithTimeout(`${GEMINI_GENERATE_BASE}${model}:generateContent`,{
         method:"POST",
         headers:{
           "Content-Type":"application/json",
@@ -1907,7 +1965,7 @@ async function callGeminiLegacy(prompt,key){
         body:JSON.stringify({
           contents:[{role:"user",parts:[{text:prompt}]}]
         })
-      });
+      },15000);
 
       const data=await res.json().catch(()=>({}));
 
@@ -2163,8 +2221,8 @@ function identityFingerprint(raw,headers,occurrence=1){
   const chosen=strong.length?strong:stable.length?stable:pairs;
   return `${stableHash(chosen.map(([h,v])=>`${canonicalHeader(h)}=${normalizeStr(v)}`).join("|"))}:${occurrence}`;
 }
-function nextRecordId(prefix){
-  const used=new Set(inventory.map(x=>normalizeQrPayload(x.id||"").toUpperCase()));
+function nextRecordId(){
+  const used=new Set(inventory.map(x=>normalizeNexusId(x.id||"").toUpperCase()).filter(Boolean));
   let n=1,id="";
   do{id=`NEXUS-X-${String(n).padStart(4,"0")}`;n++;}while(used.has(id));
   return id;
@@ -2343,7 +2401,7 @@ async function importInventoryWorkbook(file){
 
         // Un único código por fila. Ningún código de una columna de atributos
         // se convierte en identidad salvo que ya sea un NEXUS válido.
-        const requestedId=normalizeQrPayload(item.id||"");
+        const requestedId=normalizeNexusId(item.id||"");
         item.id=isNexusRecordCode(requestedId)?requestedId:"";
 
         staged.push(item);
@@ -2377,7 +2435,7 @@ async function importInventoryWorkbook(file){
     for(const item of staged){
       let id=String(item.id||"").trim().toUpperCase();
       if(!isNexusRecordCode(id)||reservedIds.has(id)){
-        id=nextRecordId(categoryPrefix(item.category,item.name));
+        id=nextRecordId();
         generated++;
       }
       item.id=id;
@@ -2434,7 +2492,7 @@ function generateMissingCodes(){
   let count=0; const headers=[];
   inventory.forEach(item=>{
     if(item.source?.columns) item.source.columns.forEach(c=>headers.push(c.header));
-    if(!item.id){item.id=nextRecordId(categoryPrefix(item.category,item.name));count++;}
+    if(!item.id){item.id=nextRecordId();count++;}
   });
   if(headers.length)buildSchemaFromHeaders([...new Set(headers)]);
   inventory=inventory.map((item,i)=>enrichInventoryRecord(item,item.rawData||{},Object.keys(item.rawData||{}),item.source?.row||i+2));
@@ -2583,6 +2641,12 @@ $("#researchFileInput")?.addEventListener("change",e=>{const f=e.target.files?.[
 $("#deepModeBtn")?.addEventListener("click",e=>{e.currentTarget.classList.toggle("active");showToast(e.currentTarget.classList.contains("active")?"Modo profundo activado para la próxima investigación.":"Modo profundo desactivado.")});
 $("#adversarialBtn")?.addEventListener("click",e=>{e.currentTarget.classList.toggle("active");showToast(e.currentTarget.classList.contains("active")?"Análisis adversarial activado.":"Análisis adversarial desactivado.")});
 $("#repoModeBtn")?.addEventListener("click",e=>{e.currentTarget.classList.toggle("active");showToast(e.currentTarget.classList.contains("active")?"Se priorizarán documentos del repositorio.":"Modo repositorio desactivado.")});
+$("#webModeBtn")?.addEventListener("click",e=>{
+  e.currentTarget.classList.toggle("active");
+  showToast(e.currentTarget.classList.contains("active")
+    ?"Búsqueda de Internet activada para la próxima investigación."
+    :"Búsqueda de Internet desactivada.");
+});
 document.querySelectorAll(".examples button").forEach(b=>b.addEventListener("click",()=>{$("#mainQueryInput").value=b.dataset.query;focusResearch()}));
 $("#downloadTemplateBtn")?.addEventListener("click",downloadInventoryTemplate);
 $("#excelInput")?.addEventListener("change",e=>{const f=e.target.files?.[0];if(f)importInventoryWorkbook(f);e.target.value=""});
@@ -2599,10 +2663,9 @@ document.querySelectorAll(".tab").forEach(tab=>tab.addEventListener("click",()=>
   if(tab.dataset.tab!=="answer") showToast(`La vista ${tab.textContent.trim()} se genera a partir de la investigación seleccionada.`);
 }));
 
-// Mantener los contadores sincronizados sin interferir con el motor heredado.
-const nexusOriginalBoot=boot;
-boot=async function(){await nexusOriginalBoot();renderOverview();};
-setInterval(renderOverview,2500);
+// Mantener los contadores sincronizados sin mutar la función de arranque.
+const overviewTimer=setInterval(renderOverview,2500);
+window.addEventListener("beforeunload",()=>clearInterval(overviewTimer));
 window.addEventListener("keydown",e=>{if(e.key!=="Escape")return;["inventoryOverlay","qrOverlay","qrPrintOverlay"].forEach(id=>$("#"+id)?.classList.remove("open"));if($("#pdfViewerModal").style.display==="flex")$("#pdfViewerModal").style.display="none";stopCamera();});
 
 /* =========================================================
@@ -2743,7 +2806,7 @@ async function boot(){
 
 renderInventoryList();
 renderNexusSchema();
-boot();
+boot().catch(err=>console.error("NEXUS-X boot:",err));
 
 })();
 </script>
