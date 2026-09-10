@@ -432,14 +432,16 @@ function candidateFileUrls(path) {
 const GEMINI_INTERACTIONS_URL =
   "https://generativelanguage.googleapis.com/v1beta/interactions";
 const GEMINI_MODELS = [
-  "gemini-2.5-flash",
-  "gemini-2.5-flash-lite"
+  "gemini-3.8-flash",
+  "gemini-3.7-flash",
+  "gemini-3.6-flash",
+  "gemini-3.5-flash-lite"
 ];
 const GEMINI_GENERATE_BASE =
   "https://generativelanguage.googleapis.com/v1beta/models/";
 
 /*
- * BÚSQUEDA WEB NEXUS-X — proveedores gratuitos
+ * BÚSQUEDA WEB NEXUS-X — SearXNG
  * Local-first: solo se usa cuando la evidencia local no alcanza.
  * No se envía la API key de Gemini al buscador.
  *
@@ -447,14 +449,16 @@ const GEMINI_GENERATE_BASE =
  * solicitudes desde navegadores. Por eso se prueban en orden y cada
  * fallo es aislado; NEXUS-X nunca debe quedar bloqueado por la web.
  */
-/*
- * BÚSQUEDA WEB NEXUS-X — proveedores gratuitos, con fallback y timeout.
- * NEXUS-X busca; Gemini solo sintetiza los resultados si hay API key.
- * No se envía la API key de Gemini a ningún buscador.
- */
-const WEB_SEARCH_TIMEOUT_MS = 8000;
-const WEB_SEARCH_MAX_RESULTS = 5;
-const WEB_SEARCH_CACHE_TTL_MS = 10 * 60 * 1000;
+const SEARXNG_INSTANCES = [
+  "https://search.jns.net.ar",
+  "https://searx.tiekoetter.com",
+  "https://search.pereira.is",
+  "https://searxng.site"
+];
+const SEARXNG_PROXY = "https://r.jina.ai/https://";
+const SEARXNG_TIMEOUT_MS = 7000;
+const SEARXNG_MAX_RESULTS = 6;
+const SEARXNG_CACHE_TTL_MS = 10 * 60 * 1000;
 const webSearchCache = new Map();
 
 let globalApiKey = sessionStorage.getItem("nexus_gemini_key") || "";
@@ -464,6 +468,28 @@ let repositoryTexts = {};
 let inventory = loadInventory();
 let nexusSchema = loadNexusSchema();
 let lastImportedWorkbook = "";
+
+function repairExcelRecordInvariants(){
+  if(!Array.isArray(inventory))inventory=[];
+  const seen=new Set();
+  let changed=false;
+  inventory=inventory.filter((rec)=>{
+    if(!rec || typeof rec!=="object")return false;
+    const id=String(rec.id||"").trim().toUpperCase();
+    if(!isNexusRecordCode(id))return true;
+    if(seen.has(id)){
+      // Duplicados antiguos no se borran silenciosamente: se renombran a un ID único.
+      let n=1,newId=id;
+      const prefix=(id.match(/^NEXUS:([^:-]+)/i)?.[1]||"LAB").toUpperCase();
+      do{newId=`NEXUS:${prefix}-${String(n++).padStart(4,"0")}`;}while(seen.has(newId));
+      rec.id=newId;changed=true;
+    }
+    seen.add(String(rec.id||"").toUpperCase());
+    return true;
+  });
+  if(changed)saveInventoryStore();
+}
+
 
 
 let activePdfDoc = null;
@@ -1492,7 +1518,7 @@ function renderKnowledgeMap(centerPath,relations,activeItem=null,query="") {
 
 function sleep(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
 
-async function fetchWithTimeout(url,options={},timeout=WEB_SEARCH_TIMEOUT_MS){
+async function fetchWithTimeout(url, options={}, timeout=SEARXNG_TIMEOUT_MS){
   const controller=new AbortController();
   const timer=setTimeout(()=>controller.abort(),timeout);
   try{
@@ -1502,148 +1528,65 @@ async function fetchWithTimeout(url,options={},timeout=WEB_SEARCH_TIMEOUT_MS){
   }
 }
 
-function parseJinaSearchText(text){
-  const source=String(text||"");
-  const results=[];
-  const seen=new Set();
-
-  // s.jina.ai / r.jina.ai puede devolver resultados como Markdown o como
-  // bloques Title/URL Source. Soportamos ambos formatos.
-  const sourceRe=/URL Source:\s*(https?:\/\/[^\s]+)|\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/gi;
-  let m;
-  while((m=sourceRe.exec(source)) && results.length<WEB_SEARCH_MAX_RESULTS){
-    const url=(m[1]||m[3]||"").replace(/[.,;:)}\]]+$/g,"");
-    if(!/^https?:\/\//i.test(url)||seen.has(url))continue;
-    seen.add(url);
-    const before=source.slice(Math.max(0,m.index-900),m.index);
-    const titleMatch=before.match(/Title:\s*([^\n\r]+)/i);
-    const title=m[2]||titleMatch?.[1]||"Resultado web";
-    results.push({
-      title:String(title).trim(),
-      url,
-      content:"",
-      engine:"Jina Search/Reader",
-      instance:m[1]?"r.jina.ai":"s.jina.ai"
-    });
-  }
-
-  // Último recurso: URLs desnudas. Esto evita que un cambio de formato del
-  // proveedor deje la búsqueda completamente inútil.
-  if(results.length<WEB_SEARCH_MAX_RESULTS){
-    const bare=/https?:\/\/[^\s<>)]+/g;
-    while((m=bare.exec(source)) && results.length<WEB_SEARCH_MAX_RESULTS){
-      const url=m[0].replace(/[.,;:)}\]]+$/g,"");
-      if(!/^https?:\/\//i.test(url)||seen.has(url))continue;
-      seen.add(url);
-      results.push({title:"Fuente web",url,content:"",engine:"Web",instance:"reader"});
-    }
-  }
-  return results;
+function normalizeWebResults(data,instance){
+  const raw=Array.isArray(data?.results)?data.results:[];
+  return raw.map(x=>({
+    title:String(x?.title||"Resultado web").trim(),
+    url:String(x?.url||x?.link||"").trim(),
+    content:String(x?.content||x?.snippet||"").replace(/<[^>]*>/g," ").replace(/\s+/g," ").trim(),
+    engine:String(x?.engine||"SearXNG"),
+    instance
+  })).filter(x=>x.url && /^https?:\/\//i.test(x.url) && (x.title||x.content));
 }
 
-function parseDuckDuckGo(data){
-  const results=[];
-  const add=(title,url,content)=>{
-    if(!url||!/^https?:\/\//i.test(url)||results.some(x=>x.url===url))return;
-    results.push({
-      title:String(title||"Resultado web").trim(),
-      url:String(url).trim(),
-      content:String(content||"").replace(/<[^>]*>/g," ").replace(/\s+/g," ").trim(),
-      engine:"DuckDuckGo",
-      instance:"api.duckduckgo.com"
-    });
-  };
-  if(data?.AbstractURL)add(data.Heading||"DuckDuckGo",data.AbstractURL,data.AbstractText);
-  const walk=list=>{
-    for(const item of Array.isArray(list)?list:[]){
-      if(results.length>=WEB_SEARCH_MAX_RESULTS)break;
-      if(Array.isArray(item?.Topics))walk(item.Topics);
-      else if(item?.FirstURL)add(item.Text,item.FirstURL,item.Text);
-    }
-  };
-  walk(data?.RelatedTopics);
-  return results.slice(0,WEB_SEARCH_MAX_RESULTS);
+async function searchViaJina(instance,paramsBase){
+  const qs=new URLSearchParams(paramsBase);
+  const host=instance.replace(/^https?:\/\//i,"");
+  const url=`${SEARXNG_PROXY}${host}/search?${qs.toString()}`;
+  const res=await fetchWithTimeout(url,{method:"GET",headers:{Accept:"application/json,text/plain"}},10000);
+  if(!res.ok)throw new Error(`puente HTTP ${res.status}`);
+  const text=await res.text();
+  try{
+    const data=JSON.parse(text);
+    const results=normalizeWebResults(data,instance).slice(0,SEARXNG_MAX_RESULTS);
+    if(results.length)return results;
+  }catch(_){}
+  throw new Error("el puente no devolvió resultados JSON utilizables");
 }
 
-async function searchReaderEngine(query,engine){
-  const base=engine==="bing"
-    ?"https://www.bing.com/search?setlang=es-AR&count=8&q="
-    :"https://www.google.com/search?hl=es&num=8&q=";
-  const target=base+encodeURIComponent(query);
-  const url="https://r.jina.ai/"+target;
-  const res=await fetchWithTimeout(url,{method:"GET",headers:{Accept:"text/plain","X-Locale":"es-AR"}},WEB_SEARCH_TIMEOUT_MS);
-  if(!res.ok)throw new Error(`${engine} vía Reader HTTP ${res.status}`);
-  const results=parseJinaSearchText(await res.text()).map(x=>({
-    ...x,
-    engine:engine==="bing"?"Bing vía Jina Reader":"Google vía Jina Reader",
-    instance:"r.jina.ai"
-  }));
-  if(!results.length)throw new Error(`${engine} vía Reader no devolvió resultados utilizables.`);
-  return results;
-}
-
-async function searchJinaWeb(query){
-  // El endpoint de búsqueda de Jina puede exigir API key según el límite
-  // vigente; por eso es un proveedor opcional, nunca el único.
-  const url="https://s.jina.ai/"+encodeURIComponent(query);
-  const res=await fetchWithTimeout(url,{method:"GET",headers:{Accept:"text/plain","X-Locale":"es-AR"}},WEB_SEARCH_TIMEOUT_MS);
-  if(!res.ok)throw new Error(`Jina Search HTTP ${res.status}`);
-  const results=parseJinaSearchText(await res.text());
-  if(!results.length)throw new Error("Jina Search no devolvió resultados utilizables.");
-  return results;
-}
-
-async function searchDuckDuckGo(query){
-  const url="https://api.duckduckgo.com/?q="+encodeURIComponent(query)+"&format=json&no_html=1&skip_disambig=1";
-  const res=await fetchWithTimeout(url,{method:"GET",headers:{Accept:"application/json"}},WEB_SEARCH_TIMEOUT_MS);
-  if(!res.ok)throw new Error(`DuckDuckGo HTTP ${res.status}`);
-  const results=parseDuckDuckGo(await res.json());
-  if(!results.length)throw new Error("DuckDuckGo no devolvió resultados utilizables.");
-  return results;
-}
-
-async function searchWeb(query){
+async function searchWebSearXNG(query){
   const clean=String(query||"").trim();
-  if(!clean)return {results:[],provider:null,errors:[],cached:false};
+  if(!clean)return {results:[],instance:null,errors:[],via:null};
   const key=normalizeStr(clean);
   const cached=webSearchCache.get(key);
-  if(cached && Date.now()-cached.at<WEB_SEARCH_CACHE_TTL_MS){
-    return {...cached.value,cached:true};
-  }
-
+  if(cached && Date.now()-cached.at<SEARXNG_CACHE_TTL_MS)return cached.value;
   const errors=[];
-  // Reader es el camino principal porque ofrece uso básico gratuito sin
-  // API key; los demás son respaldos independientes.
-  const providers=[
-    ["Google vía Jina Reader",()=>searchReaderEngine(clean,"google")],
-    ["Bing vía Jina Reader",()=>searchReaderEngine(clean,"bing")],
-    ["Jina Search",()=>searchJinaWeb(clean)],
-    ["DuckDuckGo",()=>searchDuckDuckGo(clean)]
-  ];
-
-  for(const [name,fn] of providers){
+  const paramsBase={q:clean,format:"json",language:"es",safesearch:"1",pageno:"1"};
+  for(const instance of SEARXNG_INSTANCES){
     try{
-      const results=await fn();
-      const value={results:results.slice(0,WEB_SEARCH_MAX_RESULTS),provider:name,errors,cached:false};
-      webSearchCache.set(key,{at:Date.now(),value});
-      return value;
-    }catch(err){
-      errors.push(`${name}: ${err?.name==="AbortError"?"timeout":(err?.message||"error de red")}`);
-      await sleep(0);
-    }
+      const qs=new URLSearchParams(paramsBase);
+      const res=await fetchWithTimeout(`${instance}/search?${qs.toString()}`,{method:"GET",headers:{Accept:"application/json"}});
+      if(!res.ok)throw new Error(`HTTP ${res.status}`);
+      const type=(res.headers.get("content-type")||"").toLowerCase();
+      if(!type.includes("json"))throw new Error("respuesta no JSON");
+      const data=await res.json();
+      const results=normalizeWebResults(data,instance).slice(0,SEARXNG_MAX_RESULTS);
+      if(results.length){const value={results,instance,errors,via:"direct"};webSearchCache.set(key,{at:Date.now(),value});return value;}
+      errors.push(`${instance}: sin resultados`);
+    }catch(err){errors.push(`${instance}: ${err?.name==="AbortError"?"timeout":(err?.message||"error de red")}`);}
   }
-
-  const value={results:[],provider:null,errors,cached:false};
-  webSearchCache.set(key,{at:Date.now(),value});
-  return value;
+  for(const instance of SEARXNG_INSTANCES.slice(0,3)){
+    try{const results=await searchViaJina(instance,paramsBase);const value={results,instance,errors,via:"jina"};webSearchCache.set(key,{at:Date.now(),value});return value;}
+    catch(err){errors.push(`${instance} vía puente: ${err?.name==="AbortError"?"timeout":(err?.message||"error de red")}`);}
+  }
+  const value={results:[],instance:null,errors,via:null};webSearchCache.set(key,{at:Date.now(),value});return value;
 }
-
-function renderWebResults(results,provider){
+function renderWebResults(results){
   const wrap=document.createElement("div");
   wrap.className="doc-action-card";
   wrap.innerHTML=`
-    <div class="doc-action-title">🌐 EVIDENCIA WEB · ${escapeHtml(provider||"búsqueda web")}</div>
-    <div class="doc-meta">Resultados externos. NEXUS-X los mantiene separados de la evidencia local.</div>
+    <div class="doc-action-title">🌐 EVIDENCIA WEB · búsqueda externa</div>
+    <div class="doc-meta">Resultados externos. NEXUS-X no los trata como evidencia local.</div>
     <div class="actions-row" data-web-list></div>`;
   const list=wrap.querySelector("[data-web-list]");
   results.forEach((r,i)=>{
@@ -1660,14 +1603,15 @@ function renderWebResults(results,provider){
 
 async function answerFromWeb(query,results){
   const key=sessionStorage.getItem("nexus_gemini_key")||globalApiKey;
-  if(!key)return null;
+  if(!key) return null;
+
   const sources=results.map((r,i)=>
     `[FUENTE ${i+1}]\nTítulo: ${r.title}\nURL: ${r.url}\nContenido: ${r.content||"Sin fragmento disponible."}`
   ).join("\n\n");
+
   const prompt=`
 Sos NEXUS-X, asistente técnico de laboratorio escolar.
-La búsqueda web ya fue realizada por NEXUS-X mediante un proveedor externo gratuito.
-Vos NO realizaste la búsqueda de Internet.
+La búsqueda web fue realizada por un proveedor externo. Vos NO realizaste la búsqueda.
 Respondé en español claro y preciso.
 
 PREGUNTA:
@@ -1677,24 +1621,50 @@ FUENTES WEB RECUPERADAS:
 ${sources}
 
 REGLAS:
-1. Usá solamente la información de las fuentes proporcionadas para afirmaciones externas.
+1. Usá solamente la información de las fuentes proporcionadas para las afirmaciones externas.
 2. No inventes hechos ni URLs.
 3. Citá las fuentes como [Fuente 1], [Fuente 2], etc.
 4. Si las fuentes se contradicen o no alcanzan, decilo.
-5. Diferenciá información web de información del repositorio local.
-6. No afirmes que Gemini navegó Internet.
+5. Diferenciá claramente información web de información del repositorio local.
+6. No digas que navegaste directamente por Internet: la búsqueda la realizó el proveedor externo.
 7. No uses LaTeX.
 `;
   return callGeminiAPI(prompt,key);
 }
 
+async function searchWikipediaFree(query){
+  const clean=String(query||"").trim();
+  if(!clean)return {results:[],instance:"Wikipedia",errors:[],via:"wikipedia"};
+  const url=`https://es.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(clean)}&format=json&utf8=1&origin=*`;
+  const res=await fetchWithTimeout(url,{method:"GET",headers:{Accept:"application/json"}},8000);
+  if(!res.ok)throw new Error(`Wikipedia HTTP ${res.status}`);
+  const data=await res.json();
+  const hits=Array.isArray(data?.query?.search)?data.query.search:[];
+  const results=hits.slice(0,6).map((h)=>({
+    title:String(h?.title||"Resultado Wikipedia"),
+    url:`https://es.wikipedia.org/wiki/${encodeURIComponent(String(h?.title||"").replace(/ /g,"_"))}`,
+    content:String(h?.snippet||"").replace(/<[^>]*>/g," ").replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/\s+/g," ").trim(),
+    engine:"Wikipedia",
+    instance:"es.wikipedia.org"
+  })).filter(x=>x.title&&x.url);
+  if(!results.length)throw new Error("Wikipedia no devolvió resultados");
+  return {results,instance:"es.wikipedia.org",errors:[],via:"wikipedia"};
+}
+
 async function runWebFallback(query){
-  const result=await searchWeb(query);
-  if(!result.results.length){
-    const detail=result.errors.slice(0,4).join(" · ");
-    throw new Error(`No se pudo acceder a ningún proveedor web gratuito. ${detail||"No hubo resultados."}`);
-  }
-  return result;
+  const errors=[];
+  // Primero intentamos la red SearXNG existente porque entrega resultados web generales.
+  try{
+    const result=await searchWebSearXNG(query);
+    if(result.results.length)return result;
+    errors.push(...(result.errors||[]).slice(0,4));
+  }catch(err){errors.push(err?.message||"SearXNG falló");}
+  // Último respaldo 100 % público y sin API key: Wikipedia vía API CORS.
+  try{
+    return await searchWikipediaFree(query);
+  }catch(err){errors.push(err?.message||"Wikipedia falló");}
+  const detail=errors.slice(0,5).join(" · ");
+  throw new Error(`No se pudo obtener una respuesta de ningún proveedor web gratuito${detail?`: ${detail}`:"."}`);
 }
 
 async function handleMainGlobalQuery() {
@@ -1881,7 +1851,7 @@ async function callGeminiInteractions(prompt,key){
       "x-goog-api-key":key
     },
     body:JSON.stringify({
-      model:"gemini-2.5-flash",
+      model:"gemini-3.8-flash",
       input:prompt,
       store:false
     })
@@ -2112,6 +2082,8 @@ async function handleLocalResearchFile(file) {
   }
 }
 
+repairExcelRecordInvariants();
+
 function loadNexusSchema(){
   try{
     const version=localStorage.getItem("nexus_schema_version");
@@ -2242,7 +2214,7 @@ function makeExcelIndexText(workbookName,sheets){
   for(const sh of sheets){
     const lines=sh.rows.map((row,i)=>{
       const pairs=sh.headers.map(h=>`${h}: ${row[h]??''}`).filter(x=>!/:\s*$/.test(x));
-      return `Fila ${i+2} | ${pairs.join(' | ')}`;
+      return `Fila ${row.__physicalRow||i+2} | ${pairs.join(' | ')}`;
     });
     blocks.push(`HOJA: ${sh.name}\nCOLUMNAS: ${sh.headers.join(' | ')}\n${lines.join('\n')}`);
   }
@@ -2250,51 +2222,49 @@ function makeExcelIndexText(workbookName,sheets){
 }
 async function importInventoryWorkbook(file){
   if(!window.XLSX){showToast("El motor Excel todavía está cargando.");return;}
-  if(!file)throw new Error("No se recibió ningún archivo.");
-
   try{
     const data=await file.arrayBuffer();
-    const wb=XLSX.read(data,{type:"array",cellDates:true,raw:false,defval:"",dense:false});
-    if(!Array.isArray(wb.SheetNames)||!wb.SheetNames.length)throw new Error("El libro no contiene hojas.");
+    const wb=XLSX.read(data,{type:"array",cellDates:true,raw:false,defval:""});
+    if(!wb.SheetNames.length)throw new Error("El libro no contiene hojas.");
 
-    const displayName=String(file.name||"inventario.xlsx").trim()||"inventario.xlsx";
-    const sourcePath=String(file.nexusRepoPath||displayName).trim();
-    const sourceKey=stableHash(sourcePath);
+    const workbookName=file.name||"inventario.xlsx";
+    const workbookKey=stableHash(workbookName);
+    const oldRecords=Array.isArray(inventory)?inventory:[];
+    const oldByIdentity=new Map();
+    for(const rec of oldRecords){
+      const identity=String(rec?.source?.identity||"");
+      const workbook=String(rec?.source?.workbook||"");
+      if(identity && workbook===workbookName) oldByIdentity.set(identity,rec);
+    }
 
+    // Importación transaccional: no modifica inventory hasta validar TODO el libro.
+    // Esto evita la mezcla de una importación nueva con restos de una anterior.
     const staged=[];
     const sheets=[];
-    let totalRows=0,blankRows=0,generated=0;
+    const stagedIds=new Set();
+    const errors=[];
+    let totalRows=0;
 
-    // El esquema pertenece al archivo que se está leyendo.
     nexusSchema=[];
+    saveNexusSchema();
 
     for(const sheetName of wb.SheetNames){
       const ws=wb.Sheets[sheetName];
-      if(!ws)continue;
-
-      const matrix=XLSX.utils.sheet_to_json(ws,{header:1,defval:"",raw:false,blankrows:true});
-      if(!Array.isArray(matrix)||!matrix.length)continue;
+      const matrix=XLSX.utils.sheet_to_json(ws,{header:1,defval:"",raw:false,blankrows:false});
+      if(!matrix.length)continue;
 
       const headerIndex=detectHeaderRow(matrix);
-      const headerRow=Array.isArray(matrix[headerIndex])?matrix[headerIndex]:[];
-
-      // El ancho se calcula sobre encabezados + TODAS las filas. Así una
-      // columna con encabezado vacío pero datos reales no hace desaparecer
-      // información del registro.
-      let lastUsedColumn=-1;
-      for(let r=headerIndex;r<matrix.length;r++){
-        const row=Array.isArray(matrix[r])?matrix[r]:[];
-        for(let col=0;col<row.length;col++){
-          if(String(row[col]??"").trim()!=="")lastUsedColumn=Math.max(lastUsedColumn,col);
+      const headerRow=matrix[headerIndex]||[];
+      const lastUsedColumn=headerRow.reduce((last,v,i)=>{
+        if(String(v??"").trim()!=="")return i;
+        for(let r=headerIndex+1;r<matrix.length;r++){
+          if(String(matrix[r]?.[i]??"").trim()!=="")return i;
         }
-      }
+        return last;
+      },-1);
       if(lastUsedColumn<0)continue;
 
-      const rawHeaders=[];
-      for(let col=0;col<=lastUsedColumn;col++){
-        rawHeaders.push(String(headerRow[col]??"").trim()||`CAMPO_${col+1}`);
-      }
-
+      const rawHeaders=headerRow.slice(0,lastUsedColumn+1).map((v,i)=>String(v??"").trim()||`CAMPO_${i+1}`);
       const headers=[];
       const seenHeaders=new Map();
       for(const rawHeader of rawHeaders){
@@ -2304,113 +2274,82 @@ async function importInventoryWorkbook(file){
       }
       buildSchemaFromHeaders(headers);
 
-      const sheetRows=[];
       const sheetKey=stableHash(sheetName);
+      const previewRows=[];
 
       for(let matrixIndex=headerIndex+1;matrixIndex<matrix.length;matrixIndex++){
-        const row=Array.isArray(matrix[matrixIndex])?matrix[matrixIndex]:[];
-        const nonEmpty=row.some(v=>String(v??"").trim()!=="");
-        if(!nonEmpty){blankRows++;continue;}
-
-        const raw={};
-        headers.forEach((h,colIndex)=>{
-          raw[h]=String(row[colIndex]??"").trim();
-        });
+        const row=matrix[matrixIndex]||[];
+        if(!row.some(v=>String(v??"").trim()!==""))continue;
 
         const physicalRow=matrixIndex+1;
-        const identity=`excel:${sourceKey}|sheet:${sheetKey}|row:${physicalRow}`;
+        const raw={};
+        headers.forEach((h,colIndex)=>{raw[h]=String(row[colIndex]??"").trim();});
+        const identity=`excel:${workbookKey}|sheet:${sheetKey}|row:${physicalRow}`;
         const item=rowToInventory(raw,headers,physicalRow,1);
-
-        // NUNCA descartamos una fila real por no tener NOMBRE/FÓRMULA/ID.
-        // La primera celda con contenido se usa como etiqueta de emergencia.
-        if(!String(item.name||"").trim()){
-          const firstValue=Object.values(raw).find(v=>String(v??"").trim()!=="");
-          item.name=String(firstValue||`Registro fila ${physicalRow}`).trim();
-        }
-
         item.source={
           ...(item.source||{}),
-          workbook:displayName,
-          workbookPath:sourcePath,
-          workbookKey:sourceKey,
+          workbook:workbookName,
           sheet:sheetName,
-          sheetKey,
           row:physicalRow,
           identity,
           excelIdentity:true,
-          columns:headers.map(h=>({
-            header:String(h),
-            canonical:canonicalHeader(h),
-            kind:"attribute"
-          }))
+          columns:headers.map(h=>({header:String(h),canonical:canonicalHeader(h),kind:"attribute"}))
         };
 
-        // Un único código por fila. Ningún código de una columna de atributos
-        // se convierte en identidad salvo que ya sea un NEXUS válido.
+        // Una fila no se descarta por no tener nombre/fórmula/ID.
+        // Si tiene al menos una celda con contenido, es un registro válido.
+        const previous=oldByIdentity.get(identity);
         const requestedId=String(item.id||"").trim().toUpperCase();
-        if(isNexusRecordCode(requestedId))item.id=requestedId;
-        else item.id="";
+        let id="";
 
+        if(previous && isNexusRecordCode(previous.id) && !stagedIds.has(String(previous.id).toUpperCase())){
+          id=String(previous.id).toUpperCase();
+        }else if(isNexusRecordCode(requestedId) && !stagedIds.has(requestedId)){
+          id=requestedId;
+        }else{
+          const prefix=categoryPrefix(item.category,item.name);
+          let n=1;
+          do{
+            id=`NEXUS:${prefix}-${String(n).padStart(4,"0")}`;
+            n++;
+          }while(stagedIds.has(id)||oldRecords.some(r=>String(r?.id||"").toUpperCase()===id && String(r?.source?.workbook||"")!==workbookName));
+        }
+
+        item.id=id;
+        stagedIds.add(id.toUpperCase());
         staged.push(item);
-        sheetRows.push(Object.fromEntries(headers.map((h,i)=>[h,String(row?.[i]??"").trim()])));
+        previewRows.push({...raw,__physicalRow:physicalRow});
         totalRows++;
 
-        if(totalRows%25===0)await new Promise(resolve=>setTimeout(resolve,0));
+        if(totalRows%40===0)await new Promise(resolve=>setTimeout(resolve,0));
       }
 
-      sheets.push({name:sheetName,headers,rows:sheetRows});
+      sheets.push({name:sheetName,headers,rows:previewRows});
       await new Promise(resolve=>setTimeout(resolve,0));
     }
 
-    if(!sheets.length)throw new Error("No se encontraron hojas con datos.");
-    if(totalRows===0)throw new Error("Se encontraron hojas, pero no había filas de datos.");
+    if(errors.length)throw new Error(errors.join("; "));
+    if(!sheets.length || totalRows===0)throw new Error("No se encontraron filas con datos en el libro.");
 
-    // Solo después de validar TODO el libro reemplazamos sus registros
-    // anteriores. Si el XLSX falla a mitad de camino, el inventario previo
-    // queda intacto.
-    inventory=inventory.filter(item=>{
-      const src=item?.source||{};
-      if(!src.excelIdentity)return true;
-      const old=String(src.workbookPath||src.workbook||"").trim();
-      return !(old===sourcePath||old===displayName||old.endsWith("/"+displayName)||String(src.workbookKey||"")===sourceKey);
-    });
+    // Reemplazo atómico del mismo libro. Se conservan registros manuales y de otros libros,
+    // pero NUNCA se acumulan filas de una versión anterior del mismo Excel.
+    inventory=[
+      ...oldRecords.filter(rec=>String(rec?.source?.workbook||"")!==workbookName),
+      ...staged
+    ];
+    lastImportedWorkbook=workbookName;
 
-    const reservedIds=new Set(
-      inventory.map(x=>String(x?.id||"").trim().toUpperCase()).filter(Boolean)
-    );
-
-    for(const item of staged){
-      let id=String(item.id||"").trim().toUpperCase();
-      if(!isNexusRecordCode(id)||reservedIds.has(id)){
-        id=nextRecordId(categoryPrefix(item.category,item.name));
-        generated++;
-      }
-      item.id=id;
-      reservedIds.add(id);
-      inventory.push(item);
-    }
-
-    lastImportedWorkbook=displayName;
-    const added=staged.length;
-    const updated=0;
-
-    const indexPath=`excel/${sourcePath}`;
-    const indexText=makeExcelIndexText(displayName,sheets);
+    const indexPath=`excel/${workbookName}`;
+    const indexText=makeExcelIndexText(workbookName,sheets);
     repositoryTexts[indexPath]={
-      name:displayName,
-      path:indexPath,
-      url:"",
-      original:[indexText],
-      profile:buildDocumentProfile([indexText]),
-      type:"excel",
-      sourcePath,
+      name:workbookName,path:indexPath,url:"",original:[indexText],
+      profile:buildDocumentProfile([indexText]),type:"excel",
       sheets:sheets.map(s=>({name:s.name,headers:s.headers,rows:s.rows.length}))
     };
-
     const repoIndex=repositoryFiles.findIndex(x=>x.path===indexPath);
-    const entry={name:displayName,path:indexPath,url:"",type:"excel",sourcePath};
-    if(repoIndex>=0)repositoryFiles[repoIndex]=entry;
-    else repositoryFiles.unshift(entry);
+    const repoEntry={name:workbookName,path:indexPath,url:"",type:"excel"};
+    if(repoIndex>=0)repositoryFiles[repoIndex]=repoEntry;
+    else repositoryFiles.unshift(repoEntry);
 
     localStorage.setItem("nexus_last_excel",indexPath);
     saveInventoryStore();
@@ -2420,19 +2359,14 @@ async function importInventoryWorkbook(file){
     renderOverview();
     renderExcelPreview(sheets);
 
-    const report=
-      `Excel indexado correctamente · ${totalRows} registros · `+
-      `${sheets.length} hojas · ${generated} IDs nuevos · `+
-      `${added} agregados · ${updated} actualizados · `+
-      `${blankRows} filas vacías omitidas · ${nexusSchema.length} atributos de ficha.`;
-
+    const report=`Excel indexado correctamente · ${totalRows} registros · ${sheets.length} hojas · 0 filas omitidas · 1 ID único por fila · ${nexusSchema.length} atributos de ficha.`;
     addMsg("#mainChatBox",`>> ${report}`,"system");
     showToast(report);
-    return {ok:true,rows:totalRows,sheets:sheets.length,generated,added,updated,blankRows,sourcePath};
+    return true;
   }catch(err){
-    console.error("Importación Excel:",err);
-    showToast(`No se pudo leer ${file?.name||"el archivo"}: ${err.message||"formato inválido"}`);
-    throw err;
+    console.error("Importación Excel transaccional:",err);
+    showToast(`No se pudo leer ${file.name}: ${err.message||"formato inválido"}`);
+    return false;
   }
 }
 function generateMissingCodes(){
