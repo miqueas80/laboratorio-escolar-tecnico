@@ -73,8 +73,28 @@
   <div class="grid two"><div class="card"><h2>Resumen</h2><div id="reportSummary"></div></div><div class="card"><h2>Integridad</h2><div id="integrityBox" class="diagnostic"></div></div></div>
 </section>
 <section id="view-settings" class="view">
-  <div class="page-head"><div><h1>Ajustes</h1><p>Configuración segura y diagnóstico. Las claves no se almacenan permanentemente.</p></div></div>
-  <div class="grid two"><div class="card"><h2>IA opcional</h2><div class="field"><label>Endpoint compatible (OpenAI-compatible)</label><input id="aiEndpoint" placeholder="https://…/v1/chat/completions"></div><div class="field"><label>Modelo</label><input id="aiModel" placeholder="modelo"></div><div class="field"><label>API Key de sesión</label><input id="aiKey" type="password" placeholder="No se guarda en el repositorio"></div><button class="btn primary" id="saveAiBtn">Guardar en esta sesión</button></div><div class="card"><h2>Diagnóstico</h2><div id="settingsDiag" class="diagnostic"></div><div class="section"><button class="btn danger" id="clearLocalBtn">Borrar datos locales modificables</button></div></div></div>
+  <div class="page-head"><div><h1>Ajustes</h1><p>Configuración automática: pegás la clave una sola vez y NEXUS-X configura IA + Internet sin endpoints ni modelos manuales.</p></div></div>
+  <div class="grid two">
+    <div class="card">
+      <h2>🔐 API de NEXUS-X</h2>
+      <p class="muted">Proveedor integrado: <strong>Gemini</strong>. La misma API Key permite usar IA y Búsqueda de Google en tiempo real. La clave se guarda solamente en el almacenamiento local de este navegador; nunca se escribe en GitHub.</p>
+      <div class="field"><label>Proveedor</label><select id="apiProvider"><option value="gemini">Google Gemini · IA + Google Search</option></select></div>
+      <div class="field"><label>API Key</label><input id="apiKey" type="password" autocomplete="off" placeholder="Pegá tu clave una sola vez"></div>
+      <div class="toolbar"><button class="btn primary" id="saveApiBtn">Guardar y conectar</button><button class="btn danger" id="clearApiBtn">Eliminar clave</button></div>
+      <div id="apiStatus" class="notice section">Sin API configurada.</div>
+    </div>
+    <div class="card">
+      <h2>📚 Repositorio documental</h2>
+      <p class="muted">NEXUS-X detecta automáticamente el repositorio de GitHub Pages donde está instalado y busca PDF, DOCX, XLSX, XLS, CSV, TXT y Markdown. La sincronización se ejecuta al iniciar.</p>
+      <div class="form-grid"><div class="field"><label>Propietario</label><input id="repoOwner"></div><div class="field"><label>Repositorio</label><input id="repoName"></div><div class="field"><label>Rama</label><input id="repoBranch" value="main"></div></div>
+      <div class="toolbar"><button class="btn primary" id="saveRepoSettingsBtn">Guardar repositorio</button><button class="btn" id="syncRepoSettingsBtn">↻ Sincronizar ahora</button></div>
+      <div id="repoConfigStatus" class="notice section">Repositorio no detectado.</div>
+    </div>
+  </div>
+  <div class="grid two section">
+    <div class="card"><h2>Diagnóstico</h2><div id="settingsDiag" class="diagnostic"></div></div>
+    <div class="card"><h2>Datos locales</h2><p class="muted">Podés borrar inventario modificado, favoritos, historial y caché documental sin borrar la API guardada.</p><button class="btn danger" id="clearLocalBtn">Borrar datos locales modificables</button></div>
+  </div>
 </section>
 </main>
 </div>
