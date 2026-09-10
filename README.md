@@ -1,22 +1,32 @@
-# NEXUS-X — Integración Excel + QR
+# NEXUS-X
 
-Este paquete conecta el catálogo maestro del laboratorio con identificadores QR.
+Nueva arquitectura limpia para gestión e investigación de laboratorio escolar.
 
-## Qué contiene
+## Regla de identidad
+**1 registro = 1 ID NEXUS-X.** Las columnas/campos restantes son atributos del mismo registro. No se generan códigos por columna.
 
-- `data/Sustancias_Lab_CN_NEXUS_CODIFICADO.xlsx`: Excel original con `CODIGO_NEXUS` y `QR_NEXUS`.
-- `data/nexus-x-catalog.json`: catálogo optimizado para que NEXUS-X lo consulte desde GitHub Pages.
-- `nexus-data.js`: capa de integración que carga el catálogo y permite buscar por código.
-- `index.html`: página de prueba completa para verificar un QR/código antes de integrarlo en tu NEXUS-X principal.
+## Fuente maestra
+El Word `data/Sustancias_Lab_BASE_NEXUS-X.docx` es la fuente humana. Para rendimiento, el navegador arranca desde `data/inventory.json`, generado y validado a partir del Word. El botón **Cargar Word maestro** vuelve a parsear el DOCX y solo reemplaza la base si la validación completa pasa.
 
-## Formato QR
+## Funciones
+- Dashboard con estética inspirada en la interfaz proporcionada.
+- Inventario local-first con búsqueda y filtros.
+- Excel manual para importación y CSV para exportación.
+- Investigación local con evidencia y búsqueda web opcional.
+- IA opcional mediante endpoint compatible con OpenAI; nunca es requisito para el inventario.
+- QR con cámara; al detectar, la cámara se detiene y se oculta antes del resultado.
+- Carga de PDF bajo demanda.
+- PWA y caché del núcleo.
+- Diagnóstico de integridad.
 
-El QR debe contener solamente el código:
+## Validación
+Con Node.js:
 
-`NX-SUST-0001`
+```bash
+node tools/validate.mjs
+```
 
-No pongas la ficha técnica dentro del QR. El código es el identificador permanente.
+La validación comprueba archivos esenciales, 111 registros, IDs únicos, formato `NEXUS-X-0001`…`NEXUS-X-0111`, sintaxis JS e IDs HTML duplicados.
 
-## Importante
-
-Este paquete NO reemplaza tu NEXUS-X original. Sirve como integración segura de los datos del Excel. Primero probá la búsqueda de códigos; después se puede insertar `nexus-data.js` en tu interfaz original sin destruir el mapa, Gemini ni el visor.
+## Nota sobre librerías pesadas
+SheetJS, JSZip y PDF.js se cargan **solo al utilizar Excel, Word o PDF**. Esto reduce el trabajo de arranque en equipos escolares de pocos recursos. Si no hay Internet y la librería aún no está en caché, la función correspondiente mostrará un error sin romper el resto de NEXUS-X.
