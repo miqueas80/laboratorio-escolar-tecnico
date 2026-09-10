@@ -401,7 +401,7 @@ const GITHUB_CONFIG = {
   branch: "main"
 };
 const DOC_EXT = /\.(pdf|md|txt)$/i;
-const EXCEL_REPO_FILES = ["inventario.xlsx","inventario.xls","inventario.csv","data/inventario.xlsx"];
+const EXCEL_REPO_FILES = []; // Se conserva por compatibilidad; el descubrimiento real recorre todo el repositorio.
 
 function pagesBase() {
   const path = location.pathname.replace(/index\.html$/i, "");
@@ -422,7 +422,7 @@ function candidateFileUrls(path) {
 
 /*
  * Gemini:
- * - Primario: Interactions API + gemini-3.8-flash.
+ * - Primario: Interactions API con un modelo Gemini estable configurado abajo.
  * - Fallback: generateContent con modelos estables.
  *
  * IMPORTANTE: para una app pública de producción no conviene
@@ -453,6 +453,7 @@ const SEARXNG_INSTANCES = [
   "https://search.pereira.is",
   "https://searxng.site"
 ];
+const SEARXNG_PROXY = "https://r.jina.ai/https://";
 const SEARXNG_TIMEOUT_MS = 7000;
 const SEARXNG_MAX_RESULTS = 6;
 const SEARXNG_CACHE_TTL_MS = 10 * 60 * 1000;
@@ -460,6 +461,7 @@ const webSearchCache = new Map();
 
 let globalApiKey = sessionStorage.getItem("nexus_gemini_key") || "";
 let repositoryFiles = [];
+let repositoryTreeFiles = [];
 let repositoryTexts = {};
 let inventory = loadInventory();
 let nexusSchema = loadNexusSchema();
@@ -1168,23 +1170,36 @@ async function githubContents(path="") {
   return res.json();
 }
 
-async function fetchPdfTree(path="") {
-  const data = await githubContents(path);
-  if (!Array.isArray(data)) return [];
-  const found = [];
-
-  for (const item of data) {
-    if (item.type==="file" && /\.pdf$/i.test(item.name)) {
-      found.push({
-        name:item.name,path:item.path,
-        url:`https://raw.githubusercontent.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/${GITHUB_CONFIG.branch}/${item.path.split("/").map(encodeURIComponent).join("/")}`
-      });
-    } else if (item.type==="dir") {
-      const children = await fetchPdfTree(item.path);
+async function fetchRepoTree(path="",seen=new Set()){
+  const key=String(path||"");
+  if(seen.has(key))return [];
+  seen.add(key);
+  const data=await githubContents(key);
+  if(!Array.isArray(data))return [];
+  const found=[];
+  for(const item of data){
+    if(item.type==="file"){
+      const name=String(item.name||"");
+      if(/\.(pdf|md|txt|xlsx|xls|csv)$/i.test(name)){
+        found.push({
+          name,
+          path:item.path,
+          url:item.download_url||`https://raw.githubusercontent.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/${GITHUB_CONFIG.branch}/${encodeRepoPath(item.path)}`,
+          type:/\.(xlsx|xls|csv)$/i.test(name)?"excel":(/\.pdf$/i.test(name)?"pdf":"text")
+        });
+      }
+    }else if(item.type==="dir"){
+      const children=await fetchRepoTree(item.path,seen);
       found.push(...children);
     }
+    await new Promise(r=>setTimeout(r,0));
   }
   return found;
+}
+
+async function fetchPdfTree(path=""){
+  const all=await fetchRepoTree(path,new Set());
+  return all.filter(x=>x.type==="pdf");
 }
 
 async function indexOnePdf(file) {
@@ -1500,58 +1515,48 @@ function normalizeWebResults(data,instance){
   })).filter(x=>x.url && /^https?:\/\//i.test(x.url) && (x.title||x.content));
 }
 
+async function searchViaJina(instance,paramsBase){
+  const qs=new URLSearchParams(paramsBase);
+  const host=instance.replace(/^https?:\/\//i,"");
+  const url=`${SEARXNG_PROXY}${host}/search?${qs.toString()}`;
+  const res=await fetchWithTimeout(url,{method:"GET",headers:{Accept:"application/json,text/plain"}},10000);
+  if(!res.ok)throw new Error(`puente HTTP ${res.status}`);
+  const text=await res.text();
+  try{
+    const data=JSON.parse(text);
+    const results=normalizeWebResults(data,instance).slice(0,SEARXNG_MAX_RESULTS);
+    if(results.length)return results;
+  }catch(_){}
+  throw new Error("el puente no devolvió resultados JSON utilizables");
+}
+
 async function searchWebSearXNG(query){
   const clean=String(query||"").trim();
-  if(!clean) return {results:[],instance:null,errors:[]};
-
+  if(!clean)return {results:[],instance:null,errors:[],via:null};
   const key=normalizeStr(clean);
   const cached=webSearchCache.get(key);
-  if(cached && Date.now()-cached.at<SEARXNG_CACHE_TTL_MS) return cached.value;
-
+  if(cached && Date.now()-cached.at<SEARXNG_CACHE_TTL_MS)return cached.value;
   const errors=[];
   const paramsBase={q:clean,format:"json",language:"es",safesearch:"1",pageno:"1"};
-
   for(const instance of SEARXNG_INSTANCES){
     try{
       const qs=new URLSearchParams(paramsBase);
-      const url=`${instance}/search?${qs.toString()}`;
-      const res=await fetchWithTimeout(url,{
-        method:"GET",
-        headers:{Accept:"application/json"}
-      });
-
-      if(!res.ok){
-        errors.push(`${instance}: HTTP ${res.status}`);
-        continue;
-      }
-
+      const res=await fetchWithTimeout(`${instance}/search?${qs.toString()}`,{method:"GET",headers:{Accept:"application/json"}});
+      if(!res.ok)throw new Error(`HTTP ${res.status}`);
       const type=(res.headers.get("content-type")||"").toLowerCase();
-      if(!type.includes("json")){
-        errors.push(`${instance}: respuesta no JSON`);
-        continue;
-      }
-
+      if(!type.includes("json"))throw new Error("respuesta no JSON");
       const data=await res.json();
       const results=normalizeWebResults(data,instance).slice(0,SEARXNG_MAX_RESULTS);
-
-      if(results.length){
-        const value={results,instance,errors};
-        webSearchCache.set(key,{at:Date.now(),value});
-        return value;
-      }
-
+      if(results.length){const value={results,instance,errors,via:"direct"};webSearchCache.set(key,{at:Date.now(),value});return value;}
       errors.push(`${instance}: sin resultados`);
-    }catch(err){
-      const reason=err?.name==="AbortError"?"timeout":(err?.message||"error de red");
-      errors.push(`${instance}: ${reason}`);
-    }
+    }catch(err){errors.push(`${instance}: ${err?.name==="AbortError"?"timeout":(err?.message||"error de red")}`);}
   }
-
-  const value={results:[],instance:null,errors};
-  webSearchCache.set(key,{at:Date.now(),value});
-  return value;
+  for(const instance of SEARXNG_INSTANCES.slice(0,3)){
+    try{const results=await searchViaJina(instance,paramsBase);const value={results,instance,errors,via:"jina"};webSearchCache.set(key,{at:Date.now(),value});return value;}
+    catch(err){errors.push(`${instance} vía puente: ${err?.name==="AbortError"?"timeout":(err?.message||"error de red")}`);}
+  }
+  const value={results:[],instance:null,errors,via:null};webSearchCache.set(key,{at:Date.now(),value});return value;
 }
-
 function renderWebResults(results){
   const wrap=document.createElement("div");
   wrap.className="doc-action-card";
@@ -2092,6 +2097,31 @@ function enrichInventoryRecord(item,raw,headers,rowNumber){
   item.source={...(item.source||{}),workbook:lastImportedWorkbook||"local",row:rowNumber,columns:headers.map(h=>({header:String(h),canonical:canonicalHeader(h),kind:"attribute"}))};
   return item;
 }
+function normalizedHeader(v){
+  return normalizeStr(v).replace(/\s+/g," ").trim();
+}
+function isNexusRecordCode(v){
+  return /^NEXUS:[A-Z0-9._:-]+$/i.test(String(v||"").trim());
+}
+function renderExcelPreview(sheets){
+  const box=$("#excelPreview");
+  if(!box)return;
+  const list=Array.isArray(sheets)?sheets:[];
+  if(!list.length){box.innerHTML="";return;}
+  const maxSheets=Math.min(3,list.length);
+  const parts=[];
+  for(let si=0;si<maxSheets;si++){
+    const sh=list[si];
+    const headers=Array.isArray(sh.headers)?sh.headers:[];
+    const rows=Array.isArray(sh.rows)?sh.rows.slice(0,8):[];
+    parts.push(`<div style="padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.08)"><b>${escapeHtml(sh.name||`Hoja ${si+1}`)}</b> · ${headers.length} atributos · ${Array.isArray(sh.rows)?sh.rows.length:0} filas</div>`);
+    if(headers.length){
+      parts.push(`<table><thead><tr>${headers.map(h=>`<th>${escapeHtml(h)}</th>`).join("")}</tr></thead><tbody>${rows.map(row=>`<tr>${headers.map(h=>`<td>${escapeHtml(row?.[h]??"")}</td>`).join("")}</tr>`).join("")}</tbody></table>`);
+    }
+  }
+  if(list.length>maxSheets)parts.push(`<div style="padding:10px 12px;color:var(--muted)">Vista previa limitada a ${maxSheets} hojas para mantener rápida la interfaz.</div>`);
+  box.innerHTML=parts.join("");
+}
 function rowToInventory(row,headers,rowNumber,occurrence=1){
   const keys={};headers.forEach(h=>keys[normalizedHeader(h)]=String(row?.[h]??"").trim());
   const pick=(...names)=>{for(const n of names){const v=keys[normalizedHeader(n)];if(v)return v;}return "";};
@@ -2251,6 +2281,19 @@ async function importInventoryWorkbook(file){
         if(totalRows%50===0)await new Promise(resolve=>setTimeout(resolve,0));
       }
 
+      // Invariante: cada fila importada debe terminar con exactamente un ID NEXUS único.
+      // Los IDs heredados como C1000 no se reutilizan como identidad del registro.
+      const sheetInventory=inventory.filter(x=>x.source?.workbook===lastImportedWorkbook && x.source?.sheet===sheetName);
+      const seenIds=new Set();
+      for(const rec of sheetInventory){
+        let id=normalizeQrPayload(rec.id);
+        if(!isNexusRecordCode(id) || seenIds.has(id.toUpperCase())){
+          id=nextRecordId(categoryPrefix(rec.category,rec.name));
+          rec.id=id;
+        }
+        seenIds.add(id.toUpperCase());
+      }
+
       sheets.push({
         name:sheetName,
         headers,
@@ -2369,13 +2412,57 @@ function exportInventoryJson(){
   nexusDownload("nexus-inventario.json",new Blob([JSON.stringify({schema:nexusSchema,inventory},null,2)],{type:"application/json"}));
   showToast("Inventario + esquema NEXUS exportados.");
 }
-async function loadRepoExcel(){
-  if(!window.XLSX){showToast("El motor Excel todavía está cargando.");return;}
-  let last=null;
-  for(const path of EXCEL_REPO_FILES){
-    try{const url=candidateFileUrls(path)[0]; const res=await fetch(url,{cache:"no-store"}); if(!res.ok) throw new Error(`HTTP ${res.status}`); const blob=await res.blob(); blob.name=path.split("/").pop(); await importInventoryWorkbook(blob); return;}catch(e){last=e;}
+async function findRepoExcelFiles(path="",seen=new Set()){
+  // Si ya sincronizamos el árbol, no volvemos a consultar GitHub directorio por directorio.
+  if(!path && repositoryTreeFiles.length){
+    return repositoryTreeFiles.filter(x=>x.type==="excel").map(x=>({
+      name:x.name,path:x.path,downloadUrl:x.url
+    }));
   }
-  showToast(`No encontré un Excel en el repositorio${last?".":"."}`);
+  const key=String(path||"");
+  if(seen.has(key))return [];
+  seen.add(key);
+  const data=await githubContents(key);
+  if(!Array.isArray(data))return [];
+  const found=[];
+  for(const item of data){
+    if(item.type==="file" && /\.(xlsx|xls|csv)$/i.test(item.name)){
+      found.push({name:item.name,path:item.path,downloadUrl:item.download_url||`https://raw.githubusercontent.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/${GITHUB_CONFIG.branch}/${encodeRepoPath(item.path)}`});
+    }else if(item.type==="dir"){
+      found.push(...await findRepoExcelFiles(item.path,seen));
+    }
+  }
+  return found;
+}
+
+async function loadRepoExcel(options={silent:false}){
+  if(!window.XLSX){showToast("El motor Excel todavía está cargando.");return false;}
+  try{
+    const files=await findRepoExcelFiles("");
+    if(!files.length){
+      if(!options.silent)showToast("GitHub está conectado, pero no hay ningún .xlsx, .xls o .csv en el repositorio.");
+      return false;
+    }
+    // Preferir inventario/data si existe; si no, usar el primer Excel real encontrado.
+    files.sort((a,b)=>{
+      const score=x=>/^(inventario|data[\\/]inventario)\.(xlsx|xls|csv)$/i.test(x.path)?0:1;
+      return score(a)-score(b)||a.path.localeCompare(b.path);
+    });
+    const file=files[0];
+    const res=await fetch(file.downloadUrl,{cache:"no-store"});
+    if(!res.ok)throw new Error(`Excel ${file.path}: HTTP ${res.status}`);
+    const blob=await res.blob();
+    const fileLike=typeof File==="function"
+      ? new File([blob],file.name,{type:blob.type||"application/octet-stream"})
+      : Object.assign(blob,{name:file.name});
+    await importInventoryWorkbook(fileLike);
+    addMsg("#mainChatBox",`>> Excel del repositorio detectado: ${file.path}`,"system");
+    return true;
+  }catch(e){
+    console.error(e);
+    if(!options.silent)addMsg("#mainChatBox",`>> No se pudo importar el Excel del repositorio: ${e.message||e}`,"error");
+    return false;
+  }
 }
 function openQrPrint(){
   const grid=$("#qrPrintGrid"); grid.innerHTML="";
@@ -2499,10 +2586,17 @@ $("#refreshRepoBtn").addEventListener("click",async()=>{
   try{
     $("#sysState").textContent="Actualizando documentos...";
     repositoryTexts={};
-    repositoryFiles=await fetchPdfTree("");
-    repositoryFiles.sort((a,b)=>a.path.localeCompare(b.path));
-    addMsg("#mainChatBox",`>> GitHub actualizado: ${repositoryFiles.length} PDFs encontrados.`,"system");
+    repositoryTreeFiles=await fetchRepoTree("");
+    repositoryTreeFiles.sort((a,b)=>a.path.localeCompare(b.path));
+    repositoryFiles=repositoryTreeFiles.filter(x=>x.type==="pdf");
+    addMsg("#mainChatBox",`>> Árbol leído: ${repositoryFiles.length} PDFs · ${repositoryTreeFiles.filter(x=>x.type==="excel").length} Excel/CSV.` ,"system");
     await indexAllPdfs();
+    try{
+      const excelFound=await loadRepoExcel({silent:true});
+      if(!excelFound) addMsg("#mainChatBox",">> No se encontró Excel/CSV en el repositorio; el inventario local sigue disponible.","system");
+    }catch(excelErr){
+      console.warn("Excel del repositorio no disponible",excelErr);
+    }
   }catch(err){
     console.error(err);
     addMsg("#mainChatBox",`>> Error al actualizar GitHub: ${err.message}`,"error");
@@ -2535,22 +2629,36 @@ async function boot(){
     // Deja que el navegador pinte la interfaz antes de empezar.
     await new Promise(requestAnimationFrame);
 
-    repositoryFiles=await fetchPdfTree("");
-    repositoryFiles.sort((a,b)=>a.path.localeCompare(b.path));
-
-    if(!repositoryFiles.length){
-      $("#sysState").textContent="Sin PDFs";
-      addMsg("#mainChatBox",">> No encontré PDFs en el repositorio ni en sus subcarpetas.","error");
-      $("#mainQueryInput").disabled=false;
-      $("#mainSendBtn").disabled=false;
-      return;
-    }
+    repositoryTreeFiles=await fetchRepoTree("");
+    repositoryTreeFiles.sort((a,b)=>a.path.localeCompare(b.path));
+    repositoryFiles=repositoryTreeFiles.filter(x=>x.type==="pdf");
+    const excelCount=repositoryTreeFiles.filter(x=>x.type==="excel").length;
 
     addMsg("#mainChatBox",
-      `>> Encontrados ${repositoryFiles.length} PDFs en todo el árbol. Indexando contenido...`,
+      `>> Árbol leído: ${repositoryFiles.length} PDFs · ${excelCount} Excel/CSV.`,
       "system");
 
-    await indexAllPdfs();
+    if(repositoryFiles.length){
+      addMsg("#mainChatBox",
+        `>> Encontrados ${repositoryFiles.length} PDFs en todo el árbol. Indexando contenido...`,
+        "system");
+      await indexAllPdfs();
+    }else{
+      addMsg("#mainChatBox",">> No hay PDFs en el repositorio; el inventario y la investigación web siguen disponibles.","system");
+    }
+
+    // IMPORTANTE: el Excel del repositorio se carga también durante el arranque.
+    // Antes solo se cargaba al pulsar "Sincronizar", que era la causa del "Sin esquema cargado".
+    try{
+      const excelFound=await loadRepoExcel({silent:true});
+      if(!excelFound){
+        addMsg("#mainChatBox",">> No se encontró Excel/CSV en el repositorio; el inventario local sigue disponible.","system");
+      }
+    }catch(excelErr){
+      console.warn("Excel del repositorio no disponible",excelErr);
+    }
+    $("#mainQueryInput").disabled=false;
+    $("#mainSendBtn").disabled=false;
   }catch(err){
     console.error(err);
     $("#sysState").textContent="Error de sincronización";
